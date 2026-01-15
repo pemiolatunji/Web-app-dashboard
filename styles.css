@@ -129,6 +129,13 @@ body {
 }
 
 /* Dashboard */
+.metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
 .dashboard-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -179,33 +186,151 @@ body {
     color: var(--mtn-yellow);
 }
 
+.metric-card {
+    background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.metric-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px var(--shadow);
+    border-color: var(--mtn-yellow);
+}
+
+.metric-icon {
+    background: var(--mtn-yellow);
+    color: var(--bg-dark);
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+    flex-shrink: 0;
+}
+
+.metric-content h3 {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+}
+
+.metric-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--mtn-yellow);
+    margin: 0;
+}
+
+.metric-label {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
 .dashboard-content {
     display: grid;
-    grid-template-columns: 2fr 1fr;
+    grid-template-columns: 1fr;
     gap: 1.5rem;
 }
 
-.mini-map-container,
-.recent-activity {
+/* Charts Section */
+.charts-section {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.chart-container {
+    background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    transition: all 0.3s ease;
+}
+
+.chart-container:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px var(--shadow);
+    border-color: var(--mtn-yellow);
+}
+
+.chart-container h2 {
+    color: var(--mtn-yellow);
+    margin-bottom: 1rem;
+    font-size: 1.3rem;
+    text-align: center;
+}
+
+.chart-container canvas {
+    max-height: 300px;
+}
+
+/* Analytics Section */
+.analytics-section {
     background: var(--bg-secondary);
     border: 1px solid var(--border-color);
     border-radius: 12px;
     padding: 1.5rem;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    margin-bottom: 2rem;
 }
 
-.mini-map-container h2,
-.recent-activity h2 {
+.analytics-section h2 {
     color: var(--mtn-yellow);
-    margin-bottom: 1rem;
-    font-size: 1.3rem;
+    margin-bottom: 1.5rem;
+    font-size: 1.5rem;
 }
 
-.mini-map {
-    height: 400px;
+.analytics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1rem;
+}
+
+.analytics-card {
+    background: linear-gradient(135deg, var(--bg-tertiary) 0%, var(--bg-dark) 100%);
+    border: 1px solid var(--border-color);
     border-radius: 8px;
-    overflow: hidden;
-    border: 2px solid var(--border-color);
+    padding: 1rem;
+    transition: all 0.3s ease;
+}
+
+.analytics-card:hover {
+    border-color: var(--mtn-yellow);
+    transform: translateY(-3px);
+    box-shadow: 0 4px 15px var(--shadow);
+}
+
+.analytics-card h3 {
+    color: var(--mtn-yellow);
+    font-size: 1rem;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.analytics-card .count {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+}
+
+.analytics-card .label {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
 }
 
 .activity-list {
@@ -231,41 +356,310 @@ body {
     margin-top: 0.25rem;
 }
 
-/* Map View */
-.map-controls {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+/* CSV Upload Section */
+.upload-section {
+    background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
+    border: 2px dashed var(--border-color);
+    border-radius: 12px;
+    padding: 2rem;
+    text-align: center;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    margin-bottom: 2rem;
+}
+
+.upload-section:hover,
+.upload-section.dragover {
+    border-color: var(--mtn-yellow);
+    background: linear-gradient(135deg, var(--bg-tertiary) 0%, var(--bg-secondary) 100%);
+    box-shadow: 0 8px 25px var(--shadow);
+}
+
+.upload-icon {
+    font-size: 3rem;
+    color: var(--mtn-yellow);
+    margin-bottom: 1rem;
+}
+
+.upload-section h3 {
+    color: var(--text-primary);
+    font-size: 1.3rem;
+    margin-bottom: 0.5rem;
+}
+
+.upload-section p {
+    color: var(--text-secondary);
     margin-bottom: 1.5rem;
+}
+
+.upload-section input[type="file"] {
+    display: none;
+}
+
+.upload-btn-group {
+    display: flex;
     gap: 1rem;
+    justify-content: center;
     flex-wrap: wrap;
 }
 
-.filter-group {
+/* Data Actions */
+.data-actions {
     display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    justify-content: space-between;
     align-items: center;
-    gap: 0.75rem;
 }
 
-.filter-group label {
+.data-info {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+}
+
+.data-info strong {
+    color: var(--mtn-yellow);
+}
+
+/* Page Header */
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.page-header h2 {
+    color: var(--mtn-yellow);
+    font-size: 2rem;
+}
+
+.header-actions {
+    display: flex;
+    gap: 1rem;
+}
+
+/* Chart Cards */
+.charts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.chart-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    transition: all 0.3s ease;
+}
+
+.chart-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px var(--shadow);
+    border-color: var(--mtn-yellow);
+}
+
+.chart-card h3 {
+    color: var(--mtn-yellow);
+    margin-bottom: 1rem;
+    font-size: 1.2rem;
+}
+
+.chart-card-large {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.chart-card-large h3 {
+    color: var(--mtn-yellow);
+    margin-bottom: 1.5rem;
+    font-size: 1.5rem;
+}
+
+/* Analytics Content */
+.analytics-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.analytics-filters {
+    display: flex;
+    gap: 1rem;
+}
+
+.breakdown-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.breakdown-card h3 {
+    color: var(--mtn-yellow);
+    margin-bottom: 1rem;
+    font-size: 1.3rem;
+}
+
+#breakdown-content {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+}
+
+/* Import Section */
+.import-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.import-header {
+    text-align: center;
+    margin-bottom: 3rem;
+}
+
+.import-header i {
+    color: var(--mtn-yellow);
+    margin-bottom: 1rem;
+}
+
+.import-header h2 {
+    color: var(--text-primary);
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+}
+
+.import-header p {
     color: var(--text-secondary);
 }
 
-.filter-group select {
+.upload-zone {
     background: var(--bg-secondary);
-    color: var(--text-primary);
-    border: 1px solid var(--border-color);
-    padding: 0.5rem 1rem;
-    border-radius: 6px;
+    border: 3px dashed var(--border-color);
+    border-radius: 12px;
+    padding: 3rem;
+    text-align: center;
     cursor: pointer;
+    transition: all 0.3s ease;
+    margin-bottom: 2rem;
 }
 
-.map {
-    height: calc(100vh - 250px);
+.upload-zone:hover,
+.upload-zone.dragover {
+    border-color: var(--mtn-yellow);
+    background: var(--bg-tertiary);
+    box-shadow: 0 8px 25px var(--shadow);
+}
+
+.upload-zone i {
+    color: var(--mtn-yellow);
+    margin-bottom: 1rem;
+}
+
+.upload-zone h3 {
+    color: var(--text-primary);
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.upload-zone p {
+    color: var(--text-secondary);
+    margin-bottom: 2rem;
+}
+
+.import-preview {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
     border-radius: 12px;
-    overflow: hidden;
-    border: 2px solid var(--border-color);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    padding: 2rem;
+    margin-bottom: 2rem;
+}
+
+.import-preview h3 {
+    color: var(--mtn-yellow);
+    margin-bottom: 1rem;
+}
+
+.preview-info {
+    display: flex;
+    gap: 2rem;
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: var(--bg-tertiary);
+    border-radius: 8px;
+}
+
+.preview-info span {
+    color: var(--text-secondary);
+}
+
+.preview-info strong {
+    color: var(--text-primary);
+}
+
+.preview-table-container {
+    max-height: 400px;
+    overflow: auto;
+    margin-bottom: 1.5rem;
+}
+
+.preview-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.preview-table th,
+.preview-table td {
+    padding: 0.75rem;
+    border: 1px solid var(--border-color);
+    text-align: left;
+}
+
+.preview-table th {
+    background: var(--bg-tertiary);
+    color: var(--mtn-yellow);
+    font-weight: 600;
+}
+
+.preview-table td {
+    color: var(--text-primary);
+}
+
+.import-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+}
+
+.import-help {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1.5rem;
+}
+
+.import-help h4 {
+    color: var(--mtn-yellow);
+    margin-bottom: 1rem;
+}
+
+.import-help ul {
+    color: var(--text-secondary);
+    margin-left: 1.5rem;
+}
+
+.import-help li {
+    margin-bottom: 0.5rem;
 }
 
 /* Inventory View */
@@ -274,6 +668,16 @@ body {
     justify-content: space-between;
     align-items: center;
     margin-bottom: 1.5rem;
+}
+
+.inventory-stats {
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+    font-size: 0.95rem;
+}
+
+.inventory-stats strong {
+    color: var(--mtn-yellow);
 }
 
 .inventory-header h2 {
@@ -423,6 +827,17 @@ body {
     border-color: var(--mtn-yellow);
 }
 
+.btn-danger {
+    background: var(--danger);
+    color: var(--text-primary);
+}
+
+.btn-danger:hover {
+    background: #d32f2f;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(244, 67, 54, 0.3);
+}
+
 /* Modal */
 .modal {
     display: none;
@@ -548,29 +963,43 @@ form {
     font-style: italic;
 }
 
-/* Leaflet Map Custom Styles */
-.leaflet-popup-content-wrapper {
-    background: var(--bg-secondary);
-    color: var(--text-primary);
-    border: 1px solid var(--mtn-yellow);
+/* Executive Metrics Cards */
+.metrics-highlight {
+    background: linear-gradient(135deg, #FFCB05 0%, #E6B500 100%);
+    border-radius: 12px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 8px 30px rgba(255, 203, 5, 0.3);
 }
 
-.leaflet-popup-tip {
-    background: var(--bg-secondary);
+.metrics-highlight h2 {
+    color: var(--bg-dark);
+    font-size: 1.8rem;
+    margin-bottom: 1rem;
 }
 
-.leaflet-container a.leaflet-popup-close-button {
-    color: var(--mtn-yellow);
+.metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
 }
 
-.popup-content h3 {
-    color: var(--mtn-yellow);
-    margin-bottom: 0.5rem;
+.metric-item {
+    background: rgba(0, 0, 0, 0.2);
+    padding: 1rem;
+    border-radius: 8px;
 }
 
-.popup-content p {
-    margin: 0.25rem 0;
-    color: var(--text-secondary);
+.metric-item .value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--bg-dark);
+}
+
+.metric-item .label {
+    font-size: 0.9rem;
+    color: rgba(0, 0, 0, 0.7);
+    margin-top: 0.25rem;
 }
 
 /* Scrollbar Styling */
@@ -607,9 +1036,12 @@ form {
         justify-content: center;
     }
 
-    .map-controls {
+    .charts-section {
+        grid-template-columns: 1fr;
+    }
+
+    .upload-btn-group {
         flex-direction: column;
-        align-items: stretch;
     }
 
     .inventory-filters {

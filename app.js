@@ -1,353 +1,437 @@
-// MTN Infrastructure Mapper Application
-// Data Storage
-class AssetManager {
-    constructor() {
-        this.storageKey = 'mtn-assets';
-        this.assets = this.loadAssets();
-        this.editingAssetId = null;
-    }
+// MTN Asset Management Dashboard Application
 
-    loadAssets() {
-        const data = localStorage.getItem(this.storageKey);
-        if (data) {
-            return JSON.parse(data);
-        }
-        // Sample data for demonstration
-        return [
-            {
-                id: this.generateId(),
-                name: 'Lagos Central Tower',
-                type: 'tower',
-                latitude: 6.5244,
-                longitude: 3.3792,
-                address: 'Victoria Island, Lagos',
-                status: 'active',
-                notes: 'Main tower serving VI area',
-                createdAt: new Date().toISOString()
-            },
-            {
-                id: this.generateId(),
-                name: 'Abuja North Station',
-                type: 'station',
-                latitude: 9.0765,
-                longitude: 7.3986,
-                address: 'Maitama, Abuja',
-                status: 'active',
-                notes: 'Base station for Maitama district',
-                createdAt: new Date().toISOString()
-            },
-            {
-                id: this.generateId(),
-                name: 'Port Harcourt Equipment Hub',
-                type: 'equipment',
-                latitude: 4.8156,
-                longitude: 7.0498,
-                address: 'Trans Amadi, Port Harcourt',
-                status: 'maintenance',
-                notes: 'Network equipment under routine maintenance',
-                createdAt: new Date().toISOString()
+// ==================== CSV PARSER ====================
+class CSVParser {
+    static parseCSV(csvText) {
+        const lines = csvText.trim().split('\n');
+        if (lines.length === 0) return { headers: [], data: [] };
+
+        const headers = this.parseCSVLine(lines[0]);
+        const data = [];
+
+        for (let i = 1; i < lines.length; i++) {
+            if (lines[i].trim()) {
+                const values = this.parseCSVLine(lines[i]);
+                const row = {};
+                headers.forEach((header, index) => {
+                    row[header] = values[index] || '';
+                });
+                data.push(row);
             }
-        ];
+        }
+
+        return { headers, data };
     }
 
-    saveAssets() {
-        localStorage.setItem(this.storageKey, JSON.stringify(this.assets));
+    static parseCSVLine(line) {
+        const result = [];
+        let current = '';
+        let inQuotes = false;
+
+        for (let i = 0; i < line.length; i++) {
+            const char = line[i];
+            const nextChar = line[i + 1];
+
+            if (char === '"') {
+                if (inQuotes && nextChar === '"') {
+                    current += '"';
+                    i++;
+                } else {
+                    inQuotes = !inQuotes;
+                }
+            } else if (char === ',' && !inQuotes) {
+                result.push(current.trim());
+                current = '';
+            } else {
+                current += char;
+            }
+        }
+
+        result.push(current.trim());
+        return result;
+    }
+
+    static toCSV(headers, data) {
+        const escapeCSVValue = (value) => {
+            if (value === null || value === undefined) return '';
+            const stringValue = String(value);
+            if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+                return `"${stringValue.replace(/"/g, '""')}"`;
+            }
+            return stringValue;
+        };
+
+        const csvLines = [headers.map(escapeCSVValue).join(',')];
+        data.forEach(row => {
+            const line = headers.map(header => escapeCSVValue(row[header])).join(',');
+            csvLines.push(line);
+        });
+
+        return csvLines.join('\n');
+    }
+}
+
+// ==================== DATA MANAGER ====================
+class DataManager {
+    constructor() {
+        this.storageKey = 'mtn-asset-data';
+        this.headers = [];
+        this.data = [];
+        this.charts = {};
+        this.loadData();
+    }
+
+    loadData() {
+        const stored = localStorage.getItem(this.storageKey);
+        if (stored) {
+            const parsed = JSON.parse(stored);
+            this.headers = parsed.headers || [];
+            this.data = parsed.data || [];
+        }
+    }
+
+    saveData() {
+        localStorage.setItem(this.storageKey, JSON.stringify({
+            headers: this.headers,
+            data: this.data
+        }));
         this.notifyChange();
     }
 
-    generateId() {
-        return 'asset-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+    importCSV(csvText) {
+        const parsed = CSVParser.parseCSV(csvText);
+        this.headers = parsed.headers;
+        this.data = parsed.data;
+        this.saveData();
     }
 
-    addAsset(assetData) {
-        const asset = {
-            ...assetData,
-            id: this.generateId(),
-            createdAt: new Date().toISOString()
+    exportCSV() {
+        return CSVParser.toCSV(this.headers, this.data);
+    }
+
+    clearData() {
+        this.headers = [];
+        this.data = [];
+        this.saveData();
+    }
+
+    getData() {
+        return {
+            headers: this.headers,
+            data: this.data
         };
-        this.assets.push(asset);
-        this.saveAssets();
-        return asset;
     }
 
-    updateAsset(id, assetData) {
-        const index = this.assets.findIndex(a => a.id === id);
-        if (index !== -1) {
-            this.assets[index] = {
-                ...this.assets[index],
-                ...assetData,
-                updatedAt: new Date().toISOString()
-            };
-            this.saveAssets();
-            return this.assets[index];
-        }
-        return null;
-    }
-
-    deleteAsset(id) {
-        const index = this.assets.findIndex(a => a.id === id);
-        if (index !== -1) {
-            this.assets.splice(index, 1);
-            this.saveAssets();
-            return true;
-        }
-        return false;
-    }
-
-    getAsset(id) {
-        return this.assets.find(a => a.id === id);
-    }
-
-    getAllAssets() {
-        return this.assets;
-    }
-
-    filterAssets(filters) {
-        return this.assets.filter(asset => {
-            if (filters.type && filters.type !== 'all' && asset.type !== filters.type) {
-                return false;
-            }
-            if (filters.status && filters.status !== 'all' && asset.status !== filters.status) {
-                return false;
-            }
-            if (filters.search) {
-                const searchTerm = filters.search.toLowerCase();
-                return asset.name.toLowerCase().includes(searchTerm) ||
-                       asset.address.toLowerCase().includes(searchTerm);
-            }
-            return true;
-        });
+    hasData() {
+        return this.data.length > 0;
     }
 
     notifyChange() {
-        window.dispatchEvent(new Event('assets-changed'));
+        window.dispatchEvent(new Event('data-changed'));
+    }
+
+    // ==================== ANALYTICS ENGINE ====================
+    groupBy(field) {
+        const grouped = {};
+        this.data.forEach(row => {
+            const key = row[field] || 'Unknown';
+            grouped[key] = (grouped[key] || 0) + 1;
+        });
+        return grouped;
+    }
+
+    getAnalyticsByField(field) {
+        if (!this.headers.includes(field)) return {};
+        return this.groupBy(field);
+    }
+
+    getTopValues(field, limit = 5) {
+        const grouped = this.groupBy(field);
+        return Object.entries(grouped)
+            .sort(([, a], [, b]) => b - a)
+            .slice(0, limit);
+    }
+
+    detectLocationField() {
+        const locationKeywords = ['location', 'city', 'region', 'site', 'area', 'zone', 'district'];
+        return this.headers.find(h =>
+            locationKeywords.some(kw => h.toLowerCase().includes(kw))
+        );
+    }
+
+    detectCategoryField() {
+        const categoryKeywords = ['category', 'type', 'class', 'kind', 'application', 'service'];
+        return this.headers.find(h =>
+            categoryKeywords.some(kw => h.toLowerCase().includes(kw))
+        );
+    }
+
+    detectStatusField() {
+        const statusKeywords = ['status', 'state', 'condition'];
+        return this.headers.find(h =>
+            statusKeywords.some(kw => h.toLowerCase().includes(kw))
+        );
+    }
+
+    getKeyMetrics() {
+        const locationField = this.detectLocationField();
+        const categoryField = this.detectCategoryField();
+        const statusField = this.detectStatusField();
+
+        return {
+            totalRecords: this.data.length,
+            uniqueLocations: locationField ? Object.keys(this.groupBy(locationField)).length : 0,
+            uniqueCategories: categoryField ? Object.keys(this.groupBy(categoryField)).length : 0,
+            fields: this.headers.length
+        };
     }
 }
 
-// Map Manager
-class MapManager {
-    constructor(assetManager) {
-        this.assetManager = assetManager;
-        this.map = null;
-        this.miniMap = null;
-        this.markers = {};
-        this.markerIcons = this.createMarkerIcons();
+// ==================== CHART MANAGER ====================
+class ChartManager {
+    constructor(dataManager) {
+        this.dataManager = dataManager;
+        this.charts = {};
     }
 
-    createMarkerIcons() {
-        const iconConfigs = {
-            tower: { color: '#FFCB05', icon: '📡' },
-            station: { color: '#4CAF50', icon: '🏢' },
-            equipment: { color: '#FF9800', icon: '⚙️' }
-        };
-
-        const icons = {};
-        for (const [type, config] of Object.entries(iconConfigs)) {
-            icons[type] = L.divIcon({
-                html: `
-                    <div style="
-                        background: ${config.color};
-                        width: 35px;
-                        height: 35px;
-                        border-radius: 50%;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        border: 3px solid #0A0A0A;
-                        box-shadow: 0 2px 10px rgba(0,0,0,0.5);
-                        font-size: 18px;
-                    ">${config.icon}</div>
-                `,
-                className: 'custom-marker',
-                iconSize: [35, 35],
-                iconAnchor: [17, 17]
-            });
+    destroyChart(chartId) {
+        if (this.charts[chartId]) {
+            this.charts[chartId].destroy();
+            delete this.charts[chartId];
         }
-        return icons;
     }
 
-    initMainMap() {
-        if (this.map) return;
+    destroyAllCharts() {
+        Object.keys(this.charts).forEach(id => this.destroyChart(id));
+    }
 
-        // Center on Nigeria
-        this.map = L.map('map').setView([9.0820, 8.6753], 6);
+    createPieChart(canvasId, label, data) {
+        this.destroyChart(canvasId);
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; OpenStreetMap contributors',
-            maxZoom: 19
-        }).addTo(this.map);
+        const ctx = document.getElementById(canvasId);
+        if (!ctx) return null;
 
-        this.updateMarkers();
+        const labels = Object.keys(data);
+        const values = Object.values(data);
 
-        // Click to add new asset
-        this.map.on('click', (e) => {
-            if (window.confirm('Add a new asset at this location?')) {
-                document.getElementById('asset-latitude').value = e.latlng.lat.toFixed(6);
-                document.getElementById('asset-longitude').value = e.latlng.lng.toFixed(6);
-                app.openAssetModal();
+        const colors = this.generateColors(labels.length);
+
+        this.charts[canvasId] = new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: label,
+                    data: values,
+                    backgroundColor: colors,
+                    borderColor: '#0A0A0A',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            color: '#FFFFFF',
+                            padding: 15,
+                            font: {
+                                size: 12
+                            }
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: '#1A1A1A',
+                        titleColor: '#FFCB05',
+                        bodyColor: '#FFFFFF',
+                        borderColor: '#FFCB05',
+                        borderWidth: 1,
+                        padding: 12,
+                        displayColors: true
+                    }
+                }
             }
         });
+
+        return this.charts[canvasId];
     }
 
-    initMiniMap() {
-        if (this.miniMap) return;
+    createBarChart(canvasId, label, data) {
+        this.destroyChart(canvasId);
 
-        this.miniMap = L.map('mini-map').setView([9.0820, 8.6753], 6);
+        const ctx = document.getElementById(canvasId);
+        if (!ctx) return null;
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; OpenStreetMap contributors',
-            maxZoom: 19
-        }).addTo(this.miniMap);
+        const labels = Object.keys(data);
+        const values = Object.values(data);
 
-        this.updateMiniMapMarkers();
-    }
-
-    updateMarkers(filter = 'all') {
-        if (!this.map) return;
-
-        // Clear existing markers
-        Object.values(this.markers).forEach(marker => marker.remove());
-        this.markers = {};
-
-        // Add markers for assets
-        const assets = filter === 'all'
-            ? this.assetManager.getAllAssets()
-            : this.assetManager.filterAssets({ type: filter });
-
-        assets.forEach(asset => {
-            const marker = L.marker([asset.latitude, asset.longitude], {
-                icon: this.markerIcons[asset.type]
-            }).addTo(this.map);
-
-            const popupContent = `
-                <div class="popup-content">
-                    <h3>${asset.name}</h3>
-                    <p><strong>Type:</strong> ${this.formatType(asset.type)}</p>
-                    <p><strong>Status:</strong> <span class="status-badge status-${asset.status}">${asset.status.toUpperCase()}</span></p>
-                    <p><strong>Location:</strong> ${asset.address || 'N/A'}</p>
-                    ${asset.notes ? `<p><strong>Notes:</strong> ${asset.notes}</p>` : ''}
-                </div>
-            `;
-
-            marker.bindPopup(popupContent);
-            this.markers[asset.id] = marker;
+        this.charts[canvasId] = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: label,
+                    data: values,
+                    backgroundColor: '#FFCB05',
+                    borderColor: '#E6B500',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            color: '#FFFFFF',
+                            stepSize: 1
+                        },
+                        grid: {
+                            color: '#2A2A2A'
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            color: '#FFFFFF'
+                        },
+                        grid: {
+                            color: '#2A2A2A'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        backgroundColor: '#1A1A1A',
+                        titleColor: '#FFCB05',
+                        bodyColor: '#FFFFFF',
+                        borderColor: '#FFCB05',
+                        borderWidth: 1,
+                        padding: 12
+                    }
+                }
+            }
         });
+
+        return this.charts[canvasId];
     }
 
-    updateMiniMapMarkers() {
-        if (!this.miniMap) return;
+    generateColors(count) {
+        const baseColors = [
+            '#FFCB05', '#4CAF50', '#FF9800', '#2196F3', '#E91E63',
+            '#9C27B0', '#00BCD4', '#8BC34A', '#FF5722', '#607D8B'
+        ];
 
-        const assets = this.assetManager.getAllAssets();
-        assets.forEach(asset => {
-            L.marker([asset.latitude, asset.longitude], {
-                icon: this.markerIcons[asset.type]
-            }).addTo(this.miniMap);
-        });
+        const colors = [];
+        for (let i = 0; i < count; i++) {
+            colors.push(baseColors[i % baseColors.length]);
+        }
+        return colors;
     }
 
-    formatType(type) {
-        const types = {
-            tower: 'Cell Tower',
-            station: 'Base Station',
-            equipment: 'Network Equipment'
-        };
-        return types[type] || type;
-    }
+    updateCharts() {
+        const locationField = this.dataManager.detectLocationField();
+        const categoryField = this.dataManager.detectCategoryField();
 
-    fitBounds() {
-        if (!this.map || this.assetManager.getAllAssets().length === 0) return;
+        if (locationField) {
+            const locationData = this.dataManager.getAnalyticsByField(locationField);
+            this.createPieChart('locationChart', 'By Location', locationData);
+        }
 
-        const bounds = L.latLngBounds(
-            this.assetManager.getAllAssets().map(a => [a.latitude, a.longitude])
-        );
-        this.map.fitBounds(bounds, { padding: [50, 50] });
+        if (categoryField) {
+            const categoryData = this.dataManager.getAnalyticsByField(categoryField);
+            this.createBarChart('categoryChart', 'By Category', categoryData);
+        }
     }
 }
 
-// Main Application
-class MTNDashboard {
-    constructor() {
-        this.assetManager = new AssetManager();
-        this.mapManager = new MapManager(this.assetManager);
+// ==================== UI MANAGER ====================
+class UIManager {
+    constructor(dataManager, chartManager) {
+        this.dataManager = dataManager;
+        this.chartManager = chartManager;
         this.currentView = 'dashboard';
-        this.init();
     }
 
     init() {
         this.setupEventListeners();
-        this.updateDashboardStats();
-        this.updateActivityList();
-        this.renderInventoryTable();
-
-        // Listen for asset changes
-        window.addEventListener('assets-changed', () => {
-            this.updateDashboardStats();
-            this.updateActivityList();
-            this.renderInventoryTable();
-            this.mapManager.updateMarkers();
-            this.mapManager.updateMiniMapMarkers();
-        });
+        this.updateUI();
     }
 
     setupEventListeners() {
         // Navigation
         document.querySelectorAll('.nav-btn').forEach(btn => {
             btn.addEventListener('click', () => {
-                const view = btn.dataset.view;
-                this.switchView(view);
+                this.switchView(btn.dataset.view);
             });
         });
 
-        // Map filter
-        const mapFilter = document.getElementById('asset-filter');
-        if (mapFilter) {
-            mapFilter.addEventListener('change', (e) => {
-                this.mapManager.updateMarkers(e.target.value);
+        // File upload
+        const uploadZone = document.getElementById('upload-zone');
+        const fileInput = document.getElementById('csv-file-input');
+        const browseBtn = document.getElementById('browse-file-btn');
+
+        if (browseBtn) {
+            browseBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                fileInput.click();
             });
         }
 
-        // Inventory filters
-        document.getElementById('search-inventory').addEventListener('input', () => {
-            this.renderInventoryTable();
+        if (uploadZone) {
+            uploadZone.addEventListener('click', () => fileInput.click());
+
+            uploadZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadZone.classList.add('dragover');
+            });
+
+            uploadZone.addEventListener('dragleave', () => {
+                uploadZone.classList.remove('dragover');
+            });
+
+            uploadZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadZone.classList.remove('dragover');
+                const file = e.dataTransfer.files[0];
+                if (file) this.handleFileUpload(file);
+            });
+        }
+
+        if (fileInput) {
+            fileInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) this.handleFileUpload(file);
+            });
+        }
+
+        // Export button
+        const exportBtn = document.getElementById('export-btn');
+        if (exportBtn) {
+            exportBtn.addEventListener('click', () => this.exportData());
+        }
+
+        // Clear data button
+        const clearBtn = document.getElementById('clear-data-btn');
+        if (clearBtn) {
+            clearBtn.addEventListener('click', () => this.clearData());
+        }
+
+        // Data change listener
+        window.addEventListener('data-changed', () => {
+            this.updateUI();
         });
 
-        document.getElementById('type-filter').addEventListener('change', () => {
-            this.renderInventoryTable();
-        });
-
-        document.getElementById('status-filter').addEventListener('change', () => {
-            this.renderInventoryTable();
-        });
-
-        // Modal controls
-        document.getElementById('add-asset-btn').addEventListener('click', () => {
-            this.openAssetModal();
-        });
-
-        document.getElementById('add-inventory-btn').addEventListener('click', () => {
-            this.openAssetModal();
-        });
-
-        document.getElementById('close-modal').addEventListener('click', () => {
-            this.closeAssetModal();
-        });
-
-        document.getElementById('cancel-btn').addEventListener('click', () => {
-            this.closeAssetModal();
-        });
-
-        // Form submission
-        document.getElementById('asset-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.handleAssetSubmit();
-        });
-
-        // Close modal on outside click
-        document.getElementById('asset-modal').addEventListener('click', (e) => {
-            if (e.target.id === 'asset-modal') {
-                this.closeAssetModal();
-            }
-        });
+        // Inventory search
+        const searchInput = document.getElementById('search-inventory');
+        if (searchInput) {
+            searchInput.addEventListener('input', () => this.renderInventoryTable());
+        }
     }
 
     switchView(view) {
@@ -367,195 +451,228 @@ class MTNDashboard {
 
         this.currentView = view;
 
-        // Initialize maps when switching to map views
-        if (view === 'map') {
-            setTimeout(() => {
-                this.mapManager.initMainMap();
-                this.mapManager.fitBounds();
-            }, 100);
-        } else if (view === 'dashboard') {
-            setTimeout(() => {
-                this.mapManager.initMiniMap();
-            }, 100);
+        // Update charts when switching to dashboard
+        if (view === 'dashboard' && this.dataManager.hasData()) {
+            setTimeout(() => this.chartManager.updateCharts(), 100);
+        }
+    }
+
+    handleFileUpload(file) {
+        if (!file.name.endsWith('.csv')) {
+            alert('Please upload a CSV file');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                this.dataManager.importCSV(e.target.result);
+                alert(`Successfully imported ${this.dataManager.data.length} records`);
+                this.switchView('dashboard');
+            } catch (error) {
+                alert('Error parsing CSV file: ' + error.message);
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    exportData() {
+        if (!this.dataManager.hasData()) {
+            alert('No data to export');
+            return;
+        }
+
+        const csv = this.dataManager.exportCSV();
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `mtn-asset-export-${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    clearData() {
+        if (confirm('Are you sure you want to clear all data? This cannot be undone.')) {
+            this.dataManager.clearData();
+            this.chartManager.destroyAllCharts();
+            alert('All data cleared');
+        }
+    }
+
+    updateUI() {
+        this.updateDashboardStats();
+        this.updateAnalyticsBreakdown();
+        this.renderInventoryTable();
+
+        if (this.currentView === 'dashboard' && this.dataManager.hasData()) {
+            setTimeout(() => this.chartManager.updateCharts(), 100);
         }
     }
 
     updateDashboardStats() {
-        const assets = this.assetManager.getAllAssets();
+        const metrics = this.dataManager.getKeyMetrics();
+        const statusField = this.dataManager.detectStatusField();
 
-        const towers = assets.filter(a => a.type === 'tower').length;
-        const stations = assets.filter(a => a.type === 'station').length;
-        const equipment = assets.filter(a => a.type === 'equipment').length;
-        const active = assets.filter(a => a.status === 'active').length;
+        const setTextContent = (id, value) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = value;
+        };
 
-        document.getElementById('total-towers').textContent = towers;
-        document.getElementById('total-stations').textContent = stations;
-        document.getElementById('total-equipment').textContent = equipment;
-        document.getElementById('active-assets').textContent = active;
+        setTextContent('total-assets', metrics.totalRecords);
+        setTextContent('total-locations', metrics.uniqueLocations);
+        setTextContent('total-categories', metrics.uniqueCategories);
+
+        // Calculate active percentage if status field exists
+        if (statusField && metrics.totalRecords > 0) {
+            const activeCount = this.dataManager.data.filter(row => {
+                const status = String(row[statusField]).toLowerCase();
+                return status.includes('active') || status.includes('operational');
+            }).length;
+            const percentage = Math.round((activeCount / metrics.totalRecords) * 100);
+            setTextContent('active-percentage', `${percentage}%`);
+        } else {
+            setTextContent('active-percentage', 'N/A');
+        }
     }
 
-    updateActivityList() {
-        const activityList = document.getElementById('activity-list');
-        const assets = this.assetManager.getAllAssets();
+    updateAnalyticsBreakdown() {
+        const analyticsGrid = document.getElementById('analytics-grid');
+        if (!analyticsGrid) return;
 
-        if (assets.length === 0) {
-            activityList.innerHTML = '<p class="no-data">No recent activity</p>';
+        if (!this.dataManager.hasData()) {
+            analyticsGrid.innerHTML = '<p class="no-data">No data available. Upload a CSV file to get started.</p>';
             return;
         }
 
-        // Sort by most recent
-        const sortedAssets = [...assets].sort((a, b) => {
-            const dateA = new Date(a.updatedAt || a.createdAt);
-            const dateB = new Date(b.updatedAt || b.createdAt);
-            return dateB - dateA;
+        const locationField = this.dataManager.detectLocationField();
+        const categoryField = this.dataManager.detectCategoryField();
+
+        let html = '';
+
+        if (locationField) {
+            const topLocations = this.dataManager.getTopValues(locationField, 5);
+            html += this.createAnalyticsCard('Top Locations', topLocations);
+        }
+
+        if (categoryField) {
+            const topCategories = this.dataManager.getTopValues(categoryField, 5);
+            html += this.createAnalyticsCard('Top Categories', topCategories);
+        }
+
+        // Additional analytics for other fields
+        this.dataManager.headers.slice(0, 4).forEach(field => {
+            if (field !== locationField && field !== categoryField) {
+                const topValues = this.dataManager.getTopValues(field, 5);
+                if (topValues.length > 1) {
+                    html += this.createAnalyticsCard(`Top ${field}`, topValues);
+                }
+            }
         });
 
-        const recentAssets = sortedAssets.slice(0, 5);
+        analyticsGrid.innerHTML = html || '<p class="no-data">No analytics available</p>';
+    }
 
-        activityList.innerHTML = recentAssets.map(asset => {
-            const date = new Date(asset.updatedAt || asset.createdAt);
-            const timeAgo = this.getTimeAgo(date);
-            const action = asset.updatedAt ? 'Updated' : 'Added';
+    createAnalyticsCard(title, data) {
+        const items = data.map(([name, count]) =>
+            `<div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                <span style="color: #B0B0B0;">${name}</span>
+                <span style="color: #FFCB05; font-weight: 600;">${count}</span>
+            </div>`
+        ).join('');
 
-            return `
-                <div class="activity-item">
-                    <div class="activity-time">${timeAgo}</div>
-                    <div class="activity-text">
-                        ${action} <strong>${asset.name}</strong> (${this.mapManager.formatType(asset.type)})
-                    </div>
-                </div>
-            `;
-        }).join('');
+        return `
+            <div class="analytics-card">
+                <h3>${title}</h3>
+                <div>${items}</div>
+            </div>
+        `;
     }
 
     renderInventoryTable() {
         const tbody = document.getElementById('inventory-tbody');
-        const searchTerm = document.getElementById('search-inventory').value;
-        const typeFilter = document.getElementById('type-filter').value;
-        const statusFilter = document.getElementById('status-filter').value;
+        const thead = document.getElementById('inventory-thead');
 
-        const filteredAssets = this.assetManager.filterAssets({
-            search: searchTerm,
-            type: typeFilter,
-            status: statusFilter
-        });
+        if (!tbody || !thead) return;
 
-        if (filteredAssets.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" class="no-data">No assets found</td></tr>';
+        if (!this.dataManager.hasData()) {
+            thead.innerHTML = '';
+            tbody.innerHTML = '<tr><td colspan="100" class="no-data">No data available. Upload a CSV file to get started.</td></tr>';
             return;
         }
 
-        tbody.innerHTML = filteredAssets.map(asset => {
-            const lastUpdated = new Date(asset.updatedAt || asset.createdAt);
-            return `
-                <tr>
-                    <td>${asset.id.substring(0, 8)}...</td>
-                    <td>${asset.name}</td>
-                    <td>${this.mapManager.formatType(asset.type)}</td>
-                    <td>${asset.address || 'N/A'}</td>
-                    <td><span class="status-badge status-${asset.status}">${asset.status.toUpperCase()}</span></td>
-                    <td>${lastUpdated.toLocaleDateString()}</td>
-                    <td>
-                        <button class="action-btn" onclick="app.editAsset('${asset.id}')" title="Edit">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="action-btn delete" onclick="app.deleteAsset('${asset.id}')" title="Delete">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </td>
-                </tr>
-            `;
+        // Search filter
+        const searchTerm = document.getElementById('search-inventory')?.value.toLowerCase() || '';
+
+        const filteredData = searchTerm
+            ? this.dataManager.data.filter(row =>
+                Object.values(row).some(val =>
+                    String(val).toLowerCase().includes(searchTerm)
+                )
+            )
+            : this.dataManager.data;
+
+        // Render headers
+        thead.innerHTML = this.dataManager.headers.map(h => `<th>${h}</th>`).join('');
+
+        // Render data
+        if (filteredData.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="${this.dataManager.headers.length}" class="no-data">No matching records found</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = filteredData.map(row => {
+            const cells = this.dataManager.headers.map(header => {
+                const value = row[header] || '';
+                return `<td>${this.formatCellValue(value)}</td>`;
+            }).join('');
+            return `<tr>${cells}</tr>`;
         }).join('');
-    }
 
-    openAssetModal(assetId = null) {
-        const modal = document.getElementById('asset-modal');
-        const form = document.getElementById('asset-form');
-        const title = document.getElementById('modal-title');
-
-        form.reset();
-        this.assetManager.editingAssetId = assetId;
-
-        if (assetId) {
-            title.textContent = 'Edit Asset';
-            const asset = this.assetManager.getAsset(assetId);
-            if (asset) {
-                document.getElementById('asset-name').value = asset.name;
-                document.getElementById('asset-type').value = asset.type;
-                document.getElementById('asset-latitude').value = asset.latitude;
-                document.getElementById('asset-longitude').value = asset.longitude;
-                document.getElementById('asset-address').value = asset.address || '';
-                document.getElementById('asset-status').value = asset.status;
-                document.getElementById('asset-notes').value = asset.notes || '';
-            }
-        } else {
-            title.textContent = 'Add New Asset';
-        }
-
-        modal.classList.add('active');
-    }
-
-    closeAssetModal() {
-        document.getElementById('asset-modal').classList.remove('active');
-        this.assetManager.editingAssetId = null;
-    }
-
-    handleAssetSubmit() {
-        const assetData = {
-            name: document.getElementById('asset-name').value,
-            type: document.getElementById('asset-type').value,
-            latitude: parseFloat(document.getElementById('asset-latitude').value),
-            longitude: parseFloat(document.getElementById('asset-longitude').value),
-            address: document.getElementById('asset-address').value,
-            status: document.getElementById('asset-status').value,
-            notes: document.getElementById('asset-notes').value
-        };
-
-        if (this.assetManager.editingAssetId) {
-            this.assetManager.updateAsset(this.assetManager.editingAssetId, assetData);
-        } else {
-            this.assetManager.addAsset(assetData);
-        }
-
-        this.closeAssetModal();
-    }
-
-    editAsset(id) {
-        this.openAssetModal(id);
-    }
-
-    deleteAsset(id) {
-        const asset = this.assetManager.getAsset(id);
-        if (asset && confirm(`Are you sure you want to delete "${asset.name}"?`)) {
-            this.assetManager.deleteAsset(id);
+        // Update record count
+        const dataInfo = document.getElementById('data-info');
+        if (dataInfo) {
+            dataInfo.innerHTML = `Showing <strong>${filteredData.length}</strong> of <strong>${this.dataManager.data.length}</strong> records`;
         }
     }
 
-    getTimeAgo(date) {
-        const seconds = Math.floor((new Date() - date) / 1000);
+    formatCellValue(value) {
+        if (!value) return '<span style="color: #666;">-</span>';
 
-        const intervals = {
-            year: 31536000,
-            month: 2592000,
-            week: 604800,
-            day: 86400,
-            hour: 3600,
-            minute: 60
-        };
+        // Check if it's a status-like value
+        const statusKeywords = ['active', 'inactive', 'pending', 'maintenance', 'operational', 'offline'];
+        const lowerValue = String(value).toLowerCase();
 
-        for (const [unit, secondsInUnit] of Object.entries(intervals)) {
-            const interval = Math.floor(seconds / secondsInUnit);
-            if (interval >= 1) {
-                return `${interval} ${unit}${interval > 1 ? 's' : ''} ago`;
-            }
+        if (statusKeywords.includes(lowerValue)) {
+            const statusClass = lowerValue === 'active' || lowerValue === 'operational' ? 'status-active'
+                              : lowerValue === 'inactive' || lowerValue === 'offline' ? 'status-inactive'
+                              : 'status-maintenance';
+            return `<span class="status-badge ${statusClass}">${value}</span>`;
         }
 
-        return 'Just now';
+        return value;
+    }
+}
+
+// ==================== MAIN APPLICATION ====================
+class MTNAssetDashboard {
+    constructor() {
+        this.dataManager = new DataManager();
+        this.chartManager = new ChartManager(this.dataManager);
+        this.uiManager = new UIManager(this.dataManager, this.chartManager);
+    }
+
+    init() {
+        this.uiManager.init();
+        console.log('MTN Asset Management Dashboard initialized');
     }
 }
 
 // Initialize application
 let app;
 document.addEventListener('DOMContentLoaded', () => {
-    app = new MTNDashboard();
+    app = new MTNAssetDashboard();
+    app.init();
 });
