@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MTN Infrastructure Mapper</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <div class="logo-icon">MTN</div>
+                <h1>Infrastructure Mapper</h1>
+            </div>
+            <nav class="nav">
+                <button class="nav-btn active" data-view="dashboard">
+                    <i class="fas fa-chart-line"></i> Dashboard
+                </button>
+                <button class="nav-btn" data-view="map">
+                    <i class="fas fa-map-marked-alt"></i> Map View
+                </button>
+                <button class="nav-btn" data-view="inventory">
+                    <i class="fas fa-warehouse"></i> Inventory
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Dashboard View -->
+        <section id="dashboard-view" class="view active">
+            <div class="dashboard-grid">
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-broadcast-tower"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3>Total Towers</h3>
+                        <p class="stat-number" id="total-towers">0</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-building"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3>Base Stations</h3>
+                        <p class="stat-number" id="total-stations">0</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-server"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3>Network Equipment</h3>
+                        <p class="stat-number" id="total-equipment">0</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3>Active Assets</h3>
+                        <p class="stat-number" id="active-assets">0</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="dashboard-content">
+                <div class="mini-map-container">
+                    <h2>Infrastructure Overview</h2>
+                    <div id="mini-map" class="mini-map"></div>
+                </div>
+                <div class="recent-activity">
+                    <h2>Recent Updates</h2>
+                    <div id="activity-list" class="activity-list">
+                        <p class="no-data">No recent activity</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Map View -->
+        <section id="map-view" class="view">
+            <div class="map-controls">
+                <button class="btn btn-primary" id="add-asset-btn">
+                    <i class="fas fa-plus"></i> Add New Asset
+                </button>
+                <div class="filter-group">
+                    <label for="asset-filter">Filter by Type:</label>
+                    <select id="asset-filter">
+                        <option value="all">All Assets</option>
+                        <option value="tower">Cell Towers</option>
+                        <option value="station">Base Stations</option>
+                        <option value="equipment">Network Equipment</option>
+                    </select>
+                </div>
+            </div>
+            <div id="map" class="map"></div>
+        </section>
+
+        <!-- Inventory View -->
+        <section id="inventory-view" class="view">
+            <div class="inventory-header">
+                <h2>Asset Inventory</h2>
+                <button class="btn btn-primary" id="add-inventory-btn">
+                    <i class="fas fa-plus"></i> Add Asset
+                </button>
+            </div>
+            <div class="inventory-filters">
+                <input type="text" id="search-inventory" placeholder="Search assets..." class="search-input">
+                <select id="type-filter" class="filter-select">
+                    <option value="all">All Types</option>
+                    <option value="tower">Cell Towers</option>
+                    <option value="station">Base Stations</option>
+                    <option value="equipment">Network Equipment</option>
+                </select>
+                <select id="status-filter" class="filter-select">
+                    <option value="all">All Status</option>
+                    <option value="active">Active</option>
+                    <option value="maintenance">Maintenance</option>
+                    <option value="inactive">Inactive</option>
+                </select>
+            </div>
+            <div class="inventory-table-container">
+                <table class="inventory-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Type</th>
+                            <th>Location</th>
+                            <th>Status</th>
+                            <th>Last Updated</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventory-tbody">
+                        <tr>
+                            <td colspan="7" class="no-data">No assets in inventory</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <!-- Modal for Adding/Editing Assets -->
+    <div id="asset-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modal-title">Add New Asset</h2>
+                <button class="close-btn" id="close-modal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="asset-form">
+                <div class="form-group">
+                    <label for="asset-name">Asset Name *</label>
+                    <input type="text" id="asset-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="asset-type">Asset Type *</label>
+                    <select id="asset-type" required>
+                        <option value="">Select type...</option>
+                        <option value="tower">Cell Tower</option>
+                        <option value="station">Base Station</option>
+                        <option value="equipment">Network Equipment</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="asset-latitude">Latitude *</label>
+                    <input type="number" id="asset-latitude" step="0.000001" required>
+                </div>
+                <div class="form-group">
+                    <label for="asset-longitude">Longitude *</label>
+                    <input type="number" id="asset-longitude" step="0.000001" required>
+                </div>
+                <div class="form-group">
+                    <label for="asset-address">Address</label>
+                    <input type="text" id="asset-address">
+                </div>
+                <div class="form-group">
+                    <label for="asset-status">Status *</label>
+                    <select id="asset-status" required>
+                        <option value="active">Active</option>
+                        <option value="maintenance">Maintenance</option>
+                        <option value="inactive">Inactive</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="asset-notes">Notes</label>
+                    <textarea id="asset-notes" rows="3"></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="cancel-btn">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Save Asset
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
