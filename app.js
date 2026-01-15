@@ -593,13 +593,14 @@ class UIManager {
 
     renderInventoryTable() {
         const tbody = document.getElementById('inventory-tbody');
-        const thead = document.getElementById('inventory-thead');
+        const headerRow = document.getElementById('inventory-header-row');
 
-        if (!tbody || !thead) return;
+        if (!tbody || !headerRow) return;
 
         if (!this.dataManager.hasData()) {
-            thead.innerHTML = '';
+            headerRow.innerHTML = '';
             tbody.innerHTML = '<tr><td colspan="100" class="no-data">No data available. Upload a CSV file to get started.</td></tr>';
+            document.getElementById('data-info').innerHTML = 'Showing <strong>0</strong> of <strong>0</strong> records';
             return;
         }
 
@@ -615,11 +616,12 @@ class UIManager {
             : this.dataManager.data;
 
         // Render headers
-        thead.innerHTML = this.dataManager.headers.map(h => `<th>${h}</th>`).join('');
+        headerRow.innerHTML = this.dataManager.headers.map(h => `<th>${h}</th>`).join('');
 
         // Render data
         if (filteredData.length === 0) {
             tbody.innerHTML = `<tr><td colspan="${this.dataManager.headers.length}" class="no-data">No matching records found</td></tr>`;
+            document.getElementById('data-info').innerHTML = `Showing <strong>0</strong> of <strong>${this.dataManager.data.length}</strong> records`;
             return;
         }
 
