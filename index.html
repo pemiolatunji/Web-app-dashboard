@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MTN Asset Management Dashboard</title>
+    <title>MTN IT Asset Management Dashboard</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -14,20 +14,17 @@
         <div class="header-content">
             <div class="logo">
                 <div class="logo-icon">MTN</div>
-                <h1>Asset Management Dashboard</h1>
+                <h1>IT Asset Management</h1>
             </div>
             <nav class="nav">
                 <button class="nav-btn active" data-view="dashboard">
-                    <i class="fas fa-chart-line"></i> Overview
-                </button>
-                <button class="nav-btn" data-view="analytics">
-                    <i class="fas fa-chart-bar"></i> Analytics
+                    <i class="fas fa-tachometer-alt"></i> <span>Overview</span>
                 </button>
                 <button class="nav-btn" data-view="inventory">
-                    <i class="fas fa-table"></i> Inventory
+                    <i class="fas fa-server"></i> <span>Inventory</span>
                 </button>
                 <button class="nav-btn" data-view="import">
-                    <i class="fas fa-upload"></i> Import Data
+                    <i class="fas fa-file-upload"></i> <span>Import</span>
                 </button>
             </nav>
         </div>
@@ -35,218 +32,197 @@
 
     <!-- Main Content -->
     <main class="main-content">
+
         <!-- Dashboard View -->
         <section id="dashboard-view" class="view active">
-            <div class="page-header">
-                <h2>Executive Overview</h2>
+            <!-- Header Actions -->
+            <div class="view-header">
+                <h2>Executive Dashboard</h2>
                 <div class="header-actions">
                     <button class="btn btn-secondary" id="export-btn">
-                        <i class="fas fa-download"></i> Export
+                        <i class="fas fa-download"></i> Export Data
                     </button>
-                    <button class="btn btn-danger" id="clear-data-btn">
-                        <i class="fas fa-trash"></i> Clear Data
+                    <button class="btn btn-danger" id="clear-btn">
+                        <i class="fas fa-trash-alt"></i> Clear All
                     </button>
                 </div>
             </div>
 
             <!-- Key Metrics -->
-            <div class="metrics-grid">
-                <div class="metric-card">
-                    <div class="metric-icon"><i class="fas fa-boxes"></i></div>
-                    <div class="metric-content">
-                        <h3>Total Assets</h3>
-                        <p class="metric-value" id="total-assets">0</p>
-                        <span class="metric-label">Infrastructure Items</span>
+            <div class="metrics-container">
+                <div class="metric-card primary">
+                    <div class="metric-icon">
+                        <i class="fas fa-server"></i>
+                    </div>
+                    <div class="metric-details">
+                        <p class="metric-label">Total Assets</p>
+                        <h3 class="metric-value" id="total-assets">0</h3>
+                        <p class="metric-sub">IT Infrastructure</p>
                     </div>
                 </div>
-                <div class="metric-card">
-                    <div class="metric-icon"><i class="fas fa-map-marker-alt"></i></div>
-                    <div class="metric-content">
-                        <h3>Locations</h3>
-                        <p class="metric-value" id="total-locations">0</p>
-                        <span class="metric-label">States/Regions</span>
+
+                <div class="metric-card success">
+                    <div class="metric-icon">
+                        <i class="fas fa-network-wired"></i>
+                    </div>
+                    <div class="metric-details">
+                        <p class="metric-label">Physical Servers</p>
+                        <h3 class="metric-value" id="physical-count">0</h3>
+                        <p class="metric-sub" id="physical-percent">0%</p>
                     </div>
                 </div>
-                <div class="metric-card">
-                    <div class="metric-icon"><i class="fas fa-layer-group"></i></div>
-                    <div class="metric-content">
-                        <h3>Categories</h3>
-                        <p class="metric-value" id="total-categories">0</p>
-                        <span class="metric-label">Asset Types</span>
+
+                <div class="metric-card info">
+                    <div class="metric-icon">
+                        <i class="fas fa-cloud"></i>
+                    </div>
+                    <div class="metric-details">
+                        <p class="metric-label">Virtual Machines</p>
+                        <h3 class="metric-value" id="vm-count">0</h3>
+                        <p class="metric-sub" id="vm-percent">0%</p>
                     </div>
                 </div>
-                <div class="metric-card">
-                    <div class="metric-icon"><i class="fas fa-check-circle"></i></div>
-                    <div class="metric-content">
-                        <h3>Active Assets</h3>
-                        <p class="metric-value" id="active-percentage">0%</p>
-                        <span class="metric-label">Operational Status</span>
+
+                <div class="metric-card warning">
+                    <div class="metric-icon">
+                        <i class="fas fa-layer-group"></i>
+                    </div>
+                    <div class="metric-details">
+                        <p class="metric-label">Applications</p>
+                        <h3 class="metric-value" id="app-count">0</h3>
+                        <p class="metric-sub">Unique Apps</p>
                     </div>
                 </div>
             </div>
 
-            <!-- Charts Row -->
-            <div class="charts-grid">
-                <div class="chart-card">
-                    <h3>Assets by Location</h3>
-                    <canvas id="locationChart"></canvas>
+            <!-- Charts Section -->
+            <div class="charts-container">
+                <div class="chart-box">
+                    <h3><i class="fas fa-desktop"></i> Operating Systems</h3>
+                    <canvas id="osChart"></canvas>
                 </div>
-                <div class="chart-card">
-                    <h3>Assets by Category</h3>
-                    <canvas id="categoryChart"></canvas>
+
+                <div class="chart-box">
+                    <h3><i class="fas fa-cube"></i> Deployment Types</h3>
+                    <canvas id="deploymentChart"></canvas>
                 </div>
-            </div>
 
-            <!-- Analytics Breakdown -->
-            <div class="analytics-section">
-                <h2>Analytics Breakdown</h2>
-                <div class="analytics-grid" id="analytics-grid"></div>
-            </div>
-        </section>
+                <div class="chart-box">
+                    <h3><i class="fas fa-traffic-light"></i> Environment Status</h3>
+                    <canvas id="statusChart"></canvas>
+                </div>
 
-        <!-- Analytics View -->
-        <section id="analytics-view" class="view">
-            <div class="page-header">
-                <h2>Detailed Analytics</h2>
-                <div class="analytics-filters">
-                    <select id="analytics-groupby" class="filter-select">
-                        <option value="location">Group by Location</option>
-                        <option value="category">Group by Category</option>
-                        <option value="application">Group by Application</option>
-                    </select>
+                <div class="chart-box">
+                    <h3><i class="fas fa-users-cog"></i> Managed By</h3>
+                    <canvas id="managedChart"></canvas>
                 </div>
             </div>
 
-            <div class="analytics-content">
-                <!-- Distribution Chart -->
-                <div class="chart-card-large">
-                    <h3 id="analytics-chart-title">Asset Distribution</h3>
-                    <canvas id="analyticsChart"></canvas>
-                </div>
+            <!-- Top Applications -->
+            <div class="dashboard-section">
+                <h3><i class="fas fa-star"></i> Top 10 Applications</h3>
+                <div class="app-grid" id="top-apps"></div>
+            </div>
 
-                <!-- Detailed Breakdown -->
-                <div class="breakdown-card">
-                    <h3>Detailed Breakdown</h3>
-                    <div id="breakdown-content"></div>
+            <!-- Quick Stats -->
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <h4>OS Distribution</h4>
+                    <div id="os-breakdown"></div>
+                </div>
+                <div class="stat-box">
+                    <h4>Classification</h4>
+                    <div id="classification-breakdown"></div>
+                </div>
+                <div class="stat-box">
+                    <h4>Environment Types</h4>
+                    <div id="environment-breakdown"></div>
                 </div>
             </div>
         </section>
 
         <!-- Inventory View -->
         <section id="inventory-view" class="view">
-            <div class="page-header">
+            <div class="view-header">
                 <h2>Asset Inventory</h2>
-                <div class="header-actions">
-                    <button class="btn btn-primary" id="add-inventory-btn">
-                        <i class="fas fa-plus"></i> Add Asset
-                    </button>
+                <div class="inventory-info">
+                    <span id="inventory-count">Showing 0 of 0 assets</span>
                 </div>
             </div>
 
-            <div class="inventory-filters">
-                <input type="text" id="search-inventory" placeholder="Search assets..." class="search-input">
-                <select id="location-filter" class="filter-select">
-                    <option value="all">All Locations</option>
+            <!-- Filters -->
+            <div class="filters-bar">
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="search-input" placeholder="Search by hostname, IP, application...">
+                </div>
+                <select id="os-filter" class="filter-select">
+                    <option value="">All OS</option>
                 </select>
-                <select id="category-filter" class="filter-select">
-                    <option value="all">All Categories</option>
+                <select id="type-filter" class="filter-select">
+                    <option value="">All Types</option>
                 </select>
-                <select id="status-filter" class="filter-select">
-                    <option value="all">All Status</option>
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
+                <select id="env-filter" class="filter-select">
+                    <option value="">All Environments</option>
                 </select>
             </div>
 
-            <div class="inventory-stats">
-                <span id="data-info">Showing <strong id="filtered-count">0</strong> of <strong id="total-count">0</strong> assets</span>
-            </div>
-
-            <div class="inventory-table-container">
-                <table class="inventory-table">
+            <!-- Inventory Table -->
+            <div class="table-container">
+                <table class="data-table">
                     <thead>
-                        <tr id="inventory-header-row"></tr>
+                        <tr id="table-headers"></tr>
                     </thead>
-                    <tbody id="inventory-tbody"></tbody>
+                    <tbody id="table-body"></tbody>
                 </table>
             </div>
         </section>
 
-        <!-- Import Data View -->
+        <!-- Import View -->
         <section id="import-view" class="view">
-            <div class="import-container">
-                <div class="import-header">
-                    <i class="fas fa-file-csv fa-3x"></i>
-                    <h2>Import Asset Data</h2>
-                    <p>Upload your CSV file to import asset inventory</p>
-                </div>
-
-                <div class="upload-zone" id="upload-zone">
-                    <i class="fas fa-cloud-upload-alt fa-4x"></i>
-                    <h3>Drop CSV file here or click to browse</h3>
-                    <p>Supports: CSV files with headers</p>
-                    <input type="file" id="csv-file-input" accept=".csv" style="display: none;">
-                    <button class="btn btn-primary" id="browse-file-btn">
-                        <i class="fas fa-folder-open"></i> Browse Files
-                    </button>
-                </div>
-
-                <div class="import-preview" id="import-preview" style="display: none;">
-                    <h3>Data Preview</h3>
-                    <div class="preview-info">
-                        <span><strong>File:</strong> <span id="preview-filename"></span></span>
-                        <span><strong>Rows:</strong> <span id="preview-rows"></span></span>
-                        <span><strong>Columns:</strong> <span id="preview-columns"></span></span>
+            <div class="import-wrapper">
+                <div class="import-card">
+                    <div class="import-icon">
+                        <i class="fas fa-cloud-upload-alt"></i>
                     </div>
-                    <div class="preview-table-container">
-                        <table class="preview-table">
-                            <thead id="preview-thead"></thead>
-                            <tbody id="preview-tbody"></tbody>
-                        </table>
-                    </div>
-                    <div class="import-actions">
-                        <button class="btn btn-secondary" id="cancel-import-btn">Cancel</button>
-                        <button class="btn btn-primary" id="confirm-import-btn">
-                            <i class="fas fa-check"></i> Import Data
+                    <h2>Import IT Asset Data</h2>
+                    <p>Upload your CSV file to populate the dashboard</p>
+
+                    <div class="drop-zone" id="drop-zone">
+                        <i class="fas fa-file-csv fa-3x"></i>
+                        <h3>Drop CSV file here</h3>
+                        <p>or</p>
+                        <button class="btn btn-primary" id="browse-btn">
+                            <i class="fas fa-folder-open"></i> Browse Files
                         </button>
+                        <input type="file" id="file-input" accept=".csv" style="display: none;">
                     </div>
-                </div>
 
-                <div class="import-help">
-                    <h4>CSV Format Guidelines</h4>
-                    <ul>
-                        <li>First row should contain column headers</li>
-                        <li>Recommended columns: Name, Location, Category, Application, Status, etc.</li>
-                        <li>UTF-8 encoding recommended</li>
-                        <li>Existing data will be replaced upon import</li>
-                    </ul>
+                    <div class="import-info">
+                        <h4><i class="fas fa-info-circle"></i> Expected Columns:</h4>
+                        <div class="column-list">
+                            <span class="column-tag">Hostname</span>
+                            <span class="column-tag">Primary IP</span>
+                            <span class="column-tag">Standalone/VM/Virtualised</span>
+                            <span class="column-tag">OS Type</span>
+                            <span class="column-tag">OS</span>
+                            <span class="column-tag">Application</span>
+                            <span class="column-tag">Application Component/Role</span>
+                            <span class="column-tag">Type</span>
+                            <span class="column-tag">Managed by</span>
+                            <span class="column-tag">Classification</span>
+                            <span class="column-tag">Status/Environment</span>
+                        </div>
+                        <p class="help-text">
+                            <i class="fas fa-lightbulb"></i> The dashboard will automatically detect and analyze your columns
+                        </p>
+                    </div>
                 </div>
             </div>
         </section>
+
     </main>
 
-    <!-- Modal for Adding/Editing Assets -->
-    <div id="asset-modal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 id="modal-title">Add New Asset</h2>
-                <button class="close-btn" id="close-modal">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <form id="asset-form">
-                <div id="dynamic-form-fields"></div>
-                <div class="form-actions">
-                    <button type="button" class="btn btn-secondary" id="cancel-btn">Cancel</button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save"></i> Save Asset
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Scripts -->
     <script src="app.js"></script>
 </body>
 </html>

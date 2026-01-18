@@ -1,17 +1,37 @@
-// MTN Asset Management Dashboard Application
+// ==================== MTN IT ASSET MANAGEMENT DASHBOARD ====================
+// Production-Ready Application with Complete Functionality
+// Author: MTN IT Department
+// Version: 2.0
 
-// ==================== CSV PARSER ====================
+console.log('%c MTN IT Asset Management Dashboard ', 'background: #FFCB05; color: #0A0A0A; font-size: 16px; font-weight: bold; padding: 10px;');
+console.log('%c Initializing Application... ', 'background: #1A1A1A; color: #FFCB05; font-size: 12px; padding: 5px;');
+
+// ==================== CSV PARSER CLASS ====================
 class CSVParser {
+    /**
+     * Parse CSV text with proper handling of quoted fields
+     * @param {string} csvText - Raw CSV text
+     * @returns {Object} - { headers: [], data: [] }
+     */
     static parseCSV(csvText) {
+        console.log('📄 CSVParser: Starting CSV parsing...');
+
         const lines = csvText.trim().split('\n');
-        if (lines.length === 0) return { headers: [], data: [] };
+        if (lines.length === 0) {
+            console.warn('⚠️ CSVParser: Empty CSV file');
+            return { headers: [], data: [] };
+        }
 
+        // Parse headers
         const headers = this.parseCSVLine(lines[0]);
-        const data = [];
+        console.log('📋 CSVParser: Headers detected:', headers);
 
+        // Parse data rows
+        const data = [];
         for (let i = 1; i < lines.length; i++) {
-            if (lines[i].trim()) {
-                const values = this.parseCSVLine(lines[i]);
+            const line = lines[i].trim();
+            if (line) {
+                const values = this.parseCSVLine(line);
                 const row = {};
                 headers.forEach((header, index) => {
                     row[header] = values[index] || '';
@@ -20,9 +40,15 @@ class CSVParser {
             }
         }
 
+        console.log(`✅ CSVParser: Successfully parsed ${data.length} rows`);
         return { headers, data };
     }
 
+    /**
+     * Parse a single CSV line handling quoted fields properly
+     * @param {string} line - Single line from CSV
+     * @returns {Array} - Array of field values
+     */
     static parseCSVLine(line) {
         const result = [];
         let current = '';
@@ -35,7 +61,7 @@ class CSVParser {
             if (char === '"') {
                 if (inQuotes && nextChar === '"') {
                     current += '"';
-                    i++;
+                    i++; // Skip next quote
                 } else {
                     inQuotes = !inQuotes;
                 }
@@ -51,7 +77,15 @@ class CSVParser {
         return result;
     }
 
+    /**
+     * Convert data to CSV format
+     * @param {Array} headers - Column headers
+     * @param {Array} data - Data rows
+     * @returns {string} - CSV formatted string
+     */
     static toCSV(headers, data) {
+        console.log('💾 CSVParser: Exporting to CSV format...');
+
         const escapeCSVValue = (value) => {
             if (value === null || value === undefined) return '';
             const stringValue = String(value);
@@ -67,165 +101,370 @@ class CSVParser {
             csvLines.push(line);
         });
 
+        console.log(`✅ CSVParser: Exported ${data.length} rows`);
         return csvLines.join('\n');
     }
 }
 
-// ==================== DATA MANAGER ====================
-class DataManager {
+// ==================== IT ASSET MANAGER CLASS ====================
+class ITAssetManager {
     constructor() {
-        this.storageKey = 'mtn-asset-data';
+        this.storageKey = 'mtn-it-asset-data';
         this.headers = [];
         this.data = [];
-        this.charts = {};
-        this.loadData();
+        this.loadFromStorage();
+        console.log('🗄️ ITAssetManager: Initialized');
     }
 
-    loadData() {
-        const stored = localStorage.getItem(this.storageKey);
-        if (stored) {
-            const parsed = JSON.parse(stored);
-            this.headers = parsed.headers || [];
-            this.data = parsed.data || [];
+    /**
+     * Load data from LocalStorage
+     */
+    loadFromStorage() {
+        try {
+            const stored = localStorage.getItem(this.storageKey);
+            if (stored) {
+                const parsed = JSON.parse(stored);
+                this.headers = parsed.headers || [];
+                this.data = parsed.data || [];
+                console.log(`📦 ITAssetManager: Loaded ${this.data.length} assets from storage`);
+            }
+        } catch (error) {
+            console.error('❌ ITAssetManager: Error loading from storage:', error);
         }
     }
 
-    saveData() {
-        localStorage.setItem(this.storageKey, JSON.stringify({
-            headers: this.headers,
-            data: this.data
-        }));
-        this.notifyChange();
+    /**
+     * Save data to LocalStorage
+     */
+    saveToStorage() {
+        try {
+            localStorage.setItem(this.storageKey, JSON.stringify({
+                headers: this.headers,
+                data: this.data,
+                timestamp: new Date().toISOString()
+            }));
+            console.log('💾 ITAssetManager: Data saved to storage');
+            this.notifyDataChange();
+        } catch (error) {
+            console.error('❌ ITAssetManager: Error saving to storage:', error);
+        }
     }
 
+    /**
+     * Import CSV data
+     */
     importCSV(csvText) {
         const parsed = CSVParser.parseCSV(csvText);
         this.headers = parsed.headers;
         this.data = parsed.data;
-        this.saveData();
+        this.saveToStorage();
+        console.log('✅ ITAssetManager: CSV data imported successfully');
     }
 
+    /**
+     * Export data to CSV
+     */
     exportCSV() {
         return CSVParser.toCSV(this.headers, this.data);
     }
 
-    clearData() {
+    /**
+     * Clear all data
+     */
+    clearAllData() {
         this.headers = [];
         this.data = [];
-        this.saveData();
+        this.saveToStorage();
+        console.log('🗑️ ITAssetManager: All data cleared');
     }
 
-    getData() {
-        return {
-            headers: this.headers,
-            data: this.data
-        };
-    }
-
+    /**
+     * Check if data exists
+     */
     hasData() {
         return this.data.length > 0;
     }
 
-    notifyChange() {
-        window.dispatchEvent(new Event('data-changed'));
+    /**
+     * Notify data change
+     */
+    notifyDataChange() {
+        window.dispatchEvent(new Event('asset-data-changed'));
     }
 
-    // ==================== ANALYTICS ENGINE ====================
-    groupBy(field) {
-        const grouped = {};
+    /**
+     * Detect column by keywords
+     */
+    detectColumn(keywords) {
+        return this.headers.find(h =>
+            keywords.some(kw => h.toLowerCase().includes(kw.toLowerCase()))
+        );
+    }
+
+    // ==================== IT-SPECIFIC ANALYTICS ====================
+
+    /**
+     * Get deployment statistics (Physical vs VM vs Standalone)
+     */
+    getDeploymentStats() {
+        const typeColumn = this.detectColumn(['Standalone/VM/Virtualised', 'Type', 'Deployment', 'Virtual']);
+
+        if (!typeColumn) {
+            console.warn('⚠️ No deployment type column found');
+            return {};
+        }
+
+        const stats = {};
         this.data.forEach(row => {
-            const key = row[field] || 'Unknown';
-            grouped[key] = (grouped[key] || 0) + 1;
+            const value = row[typeColumn] || 'Unknown';
+            const normalized = value.toLowerCase();
+
+            // Normalize deployment types
+            let category = 'Unknown';
+            if (normalized.includes('vm') || normalized.includes('virtual')) {
+                category = 'Virtual Machine';
+            } else if (normalized.includes('physical') || normalized.includes('standalone')) {
+                category = 'Physical Server';
+            } else if (normalized.includes('container')) {
+                category = 'Container';
+            } else {
+                category = value;
+            }
+
+            stats[category] = (stats[category] || 0) + 1;
         });
-        return grouped;
+
+        console.log('📊 Deployment Stats:', stats);
+        return stats;
     }
 
-    getAnalyticsByField(field) {
-        if (!this.headers.includes(field)) return {};
-        return this.groupBy(field);
+    /**
+     * Get OS distribution
+     */
+    getOSDistribution() {
+        const osColumn = this.detectColumn(['OS', 'Operating System', 'OS Type']);
+
+        if (!osColumn) {
+            console.warn('⚠️ No OS column found');
+            return {};
+        }
+
+        const stats = {};
+        this.data.forEach(row => {
+            const os = row[osColumn] || 'Unknown';
+            stats[os] = (stats[os] || 0) + 1;
+        });
+
+        console.log('💻 OS Distribution:', stats);
+        return stats;
     }
 
-    getTopValues(field, limit = 5) {
-        const grouped = this.groupBy(field);
-        return Object.entries(grouped)
+    /**
+     * Get application statistics
+     */
+    getApplicationStats() {
+        const appColumn = this.detectColumn(['Application', 'App', 'Service']);
+
+        if (!appColumn) {
+            console.warn('⚠️ No application column found');
+            return {
+                topApps: [],
+                uniqueCount: 0,
+                totalInstances: 0
+            };
+        }
+
+        const appCounts = {};
+        this.data.forEach(row => {
+            const app = row[appColumn] || 'Unknown';
+            if (app && app !== 'Unknown' && app.trim() !== '') {
+                appCounts[app] = (appCounts[app] || 0) + 1;
+            }
+        });
+
+        const topApps = Object.entries(appCounts)
             .sort(([, a], [, b]) => b - a)
-            .slice(0, limit);
-    }
+            .slice(0, 10);
 
-    detectLocationField() {
-        const locationKeywords = ['location', 'city', 'region', 'site', 'area', 'zone', 'district'];
-        return this.headers.find(h =>
-            locationKeywords.some(kw => h.toLowerCase().includes(kw))
-        );
-    }
-
-    detectCategoryField() {
-        const categoryKeywords = ['category', 'type', 'class', 'kind', 'application', 'service'];
-        return this.headers.find(h =>
-            categoryKeywords.some(kw => h.toLowerCase().includes(kw))
-        );
-    }
-
-    detectStatusField() {
-        const statusKeywords = ['status', 'state', 'condition'];
-        return this.headers.find(h =>
-            statusKeywords.some(kw => h.toLowerCase().includes(kw))
-        );
-    }
-
-    getKeyMetrics() {
-        const locationField = this.detectLocationField();
-        const categoryField = this.detectCategoryField();
-        const statusField = this.detectStatusField();
+        console.log('🎯 Application Stats:', {
+            uniqueCount: Object.keys(appCounts).length,
+            totalInstances: this.data.length,
+            topApps: topApps.length
+        });
 
         return {
-            totalRecords: this.data.length,
-            uniqueLocations: locationField ? Object.keys(this.groupBy(locationField)).length : 0,
-            uniqueCategories: categoryField ? Object.keys(this.groupBy(categoryField)).length : 0,
-            fields: this.headers.length
+            topApps,
+            uniqueCount: Object.keys(appCounts).length,
+            totalInstances: this.data.length,
+            allApps: appCounts
+        };
+    }
+
+    /**
+     * Get environment/status statistics
+     */
+    getEnvironmentStats() {
+        const envColumn = this.detectColumn(['Status/Environment', 'Environment', 'Status', 'State']);
+
+        if (!envColumn) {
+            console.warn('⚠️ No environment/status column found');
+            return {};
+        }
+
+        const stats = {};
+        this.data.forEach(row => {
+            const env = row[envColumn] || 'Unknown';
+            stats[env] = (stats[env] || 0) + 1;
+        });
+
+        console.log('🌍 Environment Stats:', stats);
+        return stats;
+    }
+
+    /**
+     * Get managed by statistics
+     */
+    getManagedByStats() {
+        const managedColumn = this.detectColumn(['Managed by', 'Managed By', 'Owner', 'Team']);
+
+        if (!managedColumn) {
+            console.warn('⚠️ No managed by column found');
+            return {};
+        }
+
+        const stats = {};
+        this.data.forEach(row => {
+            const managed = row[managedColumn] || 'Unknown';
+            stats[managed] = (stats[managed] || 0) + 1;
+        });
+
+        console.log('👥 Managed By Stats:', stats);
+        return stats;
+    }
+
+    /**
+     * Get classification statistics
+     */
+    getClassificationStats() {
+        const classColumn = this.detectColumn(['Classification', 'Class', 'Category']);
+
+        if (!classColumn) {
+            console.warn('⚠️ No classification column found');
+            return {};
+        }
+
+        const stats = {};
+        this.data.forEach(row => {
+            const classification = row[classColumn] || 'Unknown';
+            stats[classification] = (stats[classification] || 0) + 1;
+        });
+
+        console.log('🏷️ Classification Stats:', stats);
+        return stats;
+    }
+
+    /**
+     * Get comprehensive metrics
+     */
+    getMetrics() {
+        const deployment = this.getDeploymentStats();
+        const physical = Object.entries(deployment)
+            .filter(([key]) => key.includes('Physical'))
+            .reduce((sum, [, val]) => sum + val, 0);
+        const vm = Object.entries(deployment)
+            .filter(([key]) => key.includes('Virtual'))
+            .reduce((sum, [, val]) => sum + val, 0);
+
+        const appStats = this.getApplicationStats();
+
+        return {
+            totalAssets: this.data.length,
+            physicalCount: physical,
+            physicalPercent: this.data.length > 0 ? ((physical / this.data.length) * 100).toFixed(1) : 0,
+            vmCount: vm,
+            vmPercent: this.data.length > 0 ? ((vm / this.data.length) * 100).toFixed(1) : 0,
+            appCount: appStats.uniqueCount
         };
     }
 }
 
-// ==================== CHART MANAGER ====================
-class ChartManager {
-    constructor(dataManager) {
-        this.dataManager = dataManager;
+// ==================== CHART ENGINE CLASS ====================
+class ChartEngine {
+    constructor() {
         this.charts = {};
+        this.mtnColors = {
+            primary: '#FFCB05',
+            success: '#4CAF50',
+            info: '#2196F3',
+            warning: '#FF9800',
+            danger: '#F44336',
+            purple: '#9C27B0',
+            teal: '#00BCD4',
+            lime: '#8BC34A',
+            deepOrange: '#FF5722',
+            blueGrey: '#607D8B'
+        };
+        console.log('📈 ChartEngine: Initialized');
     }
 
+    /**
+     * Destroy specific chart
+     */
     destroyChart(chartId) {
         if (this.charts[chartId]) {
             this.charts[chartId].destroy();
             delete this.charts[chartId];
+            console.log(`🗑️ ChartEngine: Destroyed chart ${chartId}`);
         }
     }
 
+    /**
+     * Destroy all charts
+     */
     destroyAllCharts() {
         Object.keys(this.charts).forEach(id => this.destroyChart(id));
+        console.log('🗑️ ChartEngine: All charts destroyed');
     }
 
-    createPieChart(canvasId, label, data) {
+    /**
+     * Generate color palette
+     */
+    generateColors(count) {
+        const colorValues = Object.values(this.mtnColors);
+        const colors = [];
+        for (let i = 0; i < count; i++) {
+            colors.push(colorValues[i % colorValues.length]);
+        }
+        return colors;
+    }
+
+    /**
+     * Create doughnut chart
+     */
+    createDoughnutChart(canvasId, title, data) {
         this.destroyChart(canvasId);
 
-        const ctx = document.getElementById(canvasId);
-        if (!ctx) return null;
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) {
+            console.warn(`⚠️ Canvas ${canvasId} not found`);
+            return null;
+        }
 
         const labels = Object.keys(data);
         const values = Object.values(data);
-
         const colors = this.generateColors(labels.length);
 
-        this.charts[canvasId] = new Chart(ctx, {
-            type: 'pie',
+        this.charts[canvasId] = new Chart(canvas, {
+            type: 'doughnut',
             data: {
                 labels: labels,
                 datasets: [{
-                    label: label,
+                    label: title,
                     data: values,
                     backgroundColor: colors,
                     borderColor: '#0A0A0A',
-                    borderWidth: 2
+                    borderWidth: 3,
+                    hoverOffset: 15
                 }]
             },
             options: {
@@ -238,8 +477,11 @@ class ChartManager {
                             color: '#FFFFFF',
                             padding: 15,
                             font: {
-                                size: 12
-                            }
+                                size: 12,
+                                family: 'Segoe UI'
+                            },
+                            boxWidth: 15,
+                            boxHeight: 15
                         }
                     },
                     tooltip: {
@@ -247,36 +489,54 @@ class ChartManager {
                         titleColor: '#FFCB05',
                         bodyColor: '#FFFFFF',
                         borderColor: '#FFCB05',
-                        borderWidth: 1,
+                        borderWidth: 2,
                         padding: 12,
-                        displayColors: true
+                        displayColors: true,
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.parsed || 0;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = ((value / total) * 100).toFixed(1);
+                                return `${label}: ${value} (${percentage}%)`;
+                            }
+                        }
                     }
                 }
             }
         });
 
+        console.log(`✅ ChartEngine: Created doughnut chart ${canvasId}`);
         return this.charts[canvasId];
     }
 
-    createBarChart(canvasId, label, data) {
+    /**
+     * Create bar chart
+     */
+    createBarChart(canvasId, title, data) {
         this.destroyChart(canvasId);
 
-        const ctx = document.getElementById(canvasId);
-        if (!ctx) return null;
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) {
+            console.warn(`⚠️ Canvas ${canvasId} not found`);
+            return null;
+        }
 
         const labels = Object.keys(data);
         const values = Object.values(data);
 
-        this.charts[canvasId] = new Chart(ctx, {
+        this.charts[canvasId] = new Chart(canvas, {
             type: 'bar',
             data: {
                 labels: labels,
                 datasets: [{
-                    label: label,
+                    label: title,
                     data: values,
-                    backgroundColor: '#FFCB05',
+                    backgroundColor: this.mtnColors.primary,
                     borderColor: '#E6B500',
-                    borderWidth: 2
+                    borderWidth: 2,
+                    borderRadius: 8,
+                    borderSkipped: false
                 }]
             },
             options: {
@@ -287,18 +547,28 @@ class ChartManager {
                         beginAtZero: true,
                         ticks: {
                             color: '#FFFFFF',
-                            stepSize: 1
+                            stepSize: 1,
+                            font: {
+                                size: 11
+                            }
                         },
                         grid: {
-                            color: '#2A2A2A'
+                            color: '#2A2A2A',
+                            drawBorder: false
                         }
                     },
                     x: {
                         ticks: {
-                            color: '#FFFFFF'
+                            color: '#FFFFFF',
+                            font: {
+                                size: 11
+                            },
+                            maxRotation: 45,
+                            minRotation: 0
                         },
                         grid: {
-                            color: '#2A2A2A'
+                            display: false,
+                            drawBorder: false
                         }
                     }
                 },
@@ -311,95 +581,83 @@ class ChartManager {
                         titleColor: '#FFCB05',
                         bodyColor: '#FFFFFF',
                         borderColor: '#FFCB05',
-                        borderWidth: 1,
-                        padding: 12
+                        borderWidth: 2,
+                        padding: 12,
+                        displayColors: false
                     }
                 }
             }
         });
 
+        console.log(`✅ ChartEngine: Created bar chart ${canvasId}`);
         return this.charts[canvasId];
-    }
-
-    generateColors(count) {
-        const baseColors = [
-            '#FFCB05', '#4CAF50', '#FF9800', '#2196F3', '#E91E63',
-            '#9C27B0', '#00BCD4', '#8BC34A', '#FF5722', '#607D8B'
-        ];
-
-        const colors = [];
-        for (let i = 0; i < count; i++) {
-            colors.push(baseColors[i % baseColors.length]);
-        }
-        return colors;
-    }
-
-    updateCharts() {
-        const locationField = this.dataManager.detectLocationField();
-        const categoryField = this.dataManager.detectCategoryField();
-
-        if (locationField) {
-            const locationData = this.dataManager.getAnalyticsByField(locationField);
-            this.createPieChart('locationChart', 'By Location', locationData);
-        }
-
-        if (categoryField) {
-            const categoryData = this.dataManager.getAnalyticsByField(categoryField);
-            this.createBarChart('categoryChart', 'By Category', categoryData);
-        }
     }
 }
 
-// ==================== UI MANAGER ====================
-class UIManager {
-    constructor(dataManager, chartManager) {
-        this.dataManager = dataManager;
-        this.chartManager = chartManager;
+// ==================== UI CONTROLLER CLASS ====================
+class UIController {
+    constructor(assetManager, chartEngine) {
+        this.assetManager = assetManager;
+        this.chartEngine = chartEngine;
         this.currentView = 'dashboard';
+        this.currentFilters = {
+            search: '',
+            os: '',
+            type: '',
+            environment: ''
+        };
+        console.log('🎨 UIController: Initialized');
     }
 
+    /**
+     * Initialize UI and event listeners
+     */
     init() {
         this.setupEventListeners();
         this.updateUI();
+        console.log('✅ UIController: Ready');
     }
 
+    /**
+     * Setup all event listeners
+     */
     setupEventListeners() {
-        // Navigation
+        // Navigation buttons
         document.querySelectorAll('.nav-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 this.switchView(btn.dataset.view);
             });
         });
 
-        // File upload
-        const uploadZone = document.getElementById('upload-zone');
-        const fileInput = document.getElementById('csv-file-input');
-        const browseBtn = document.getElementById('browse-file-btn');
+        // File upload - Drop zone
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const browseBtn = document.getElementById('browse-btn');
 
-        if (browseBtn) {
-            browseBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                fileInput.click();
+        if (dropZone && fileInput) {
+            dropZone.addEventListener('click', () => fileInput.click());
+
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropZone.classList.add('dragover');
+            });
+
+            dropZone.addEventListener('dragleave', () => {
+                dropZone.classList.remove('dragover');
+            });
+
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('dragover');
+                const file = e.dataTransfer.files[0];
+                if (file) this.handleFileUpload(file);
             });
         }
 
-        if (uploadZone) {
-            uploadZone.addEventListener('click', () => fileInput.click());
-
-            uploadZone.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                uploadZone.classList.add('dragover');
-            });
-
-            uploadZone.addEventListener('dragleave', () => {
-                uploadZone.classList.remove('dragover');
-            });
-
-            uploadZone.addEventListener('drop', (e) => {
-                e.preventDefault();
-                uploadZone.classList.remove('dragover');
-                const file = e.dataTransfer.files[0];
-                if (file) this.handleFileUpload(file);
+        if (browseBtn && fileInput) {
+            browseBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                fileInput.click();
             });
         }
 
@@ -416,265 +674,506 @@ class UIManager {
             exportBtn.addEventListener('click', () => this.exportData());
         }
 
-        // Clear data button
-        const clearBtn = document.getElementById('clear-data-btn');
+        // Clear button
+        const clearBtn = document.getElementById('clear-btn');
         if (clearBtn) {
-            clearBtn.addEventListener('click', () => this.clearData());
+            clearBtn.addEventListener('click', () => this.clearAllData());
+        }
+
+        // Search and filters
+        const searchInput = document.getElementById('search-input');
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                this.currentFilters.search = e.target.value;
+                this.renderInventoryTable();
+            });
+        }
+
+        const osFilter = document.getElementById('os-filter');
+        if (osFilter) {
+            osFilter.addEventListener('change', (e) => {
+                this.currentFilters.os = e.target.value;
+                this.renderInventoryTable();
+            });
+        }
+
+        const typeFilter = document.getElementById('type-filter');
+        if (typeFilter) {
+            typeFilter.addEventListener('change', (e) => {
+                this.currentFilters.type = e.target.value;
+                this.renderInventoryTable();
+            });
+        }
+
+        const envFilter = document.getElementById('env-filter');
+        if (envFilter) {
+            envFilter.addEventListener('change', (e) => {
+                this.currentFilters.environment = e.target.value;
+                this.renderInventoryTable();
+            });
         }
 
         // Data change listener
-        window.addEventListener('data-changed', () => {
+        window.addEventListener('asset-data-changed', () => {
             this.updateUI();
         });
 
-        // Inventory search
-        const searchInput = document.getElementById('search-inventory');
-        if (searchInput) {
-            searchInput.addEventListener('input', () => this.renderInventoryTable());
-        }
+        console.log('✅ UIController: Event listeners setup complete');
     }
 
-    switchView(view) {
-        // Update active nav button
+    /**
+     * Switch between views
+     */
+    switchView(viewName) {
+        // Update navigation buttons
         document.querySelectorAll('.nav-btn').forEach(btn => {
             btn.classList.remove('active');
-            if (btn.dataset.view === view) {
+            if (btn.dataset.view === viewName) {
                 btn.classList.add('active');
             }
         });
 
-        // Update active view
-        document.querySelectorAll('.view').forEach(v => {
-            v.classList.remove('active');
+        // Update views
+        document.querySelectorAll('.view').forEach(view => {
+            view.classList.remove('active');
         });
-        document.getElementById(`${view}-view`).classList.add('active');
+        const targetView = document.getElementById(`${viewName}-view`);
+        if (targetView) {
+            targetView.classList.add('active');
+        }
 
-        this.currentView = view;
+        this.currentView = viewName;
+        console.log(`📍 UIController: Switched to ${viewName} view`);
 
-        // Update charts when switching to dashboard
-        if (view === 'dashboard' && this.dataManager.hasData()) {
-            setTimeout(() => this.chartManager.updateCharts(), 100);
+        // Render charts if switching to dashboard
+        if (viewName === 'dashboard' && this.assetManager.hasData()) {
+            setTimeout(() => this.renderAllCharts(), 100);
+        }
+
+        // Update inventory if switching to inventory view
+        if (viewName === 'inventory') {
+            this.populateFilters();
+            this.renderInventoryTable();
         }
     }
 
+    /**
+     * Handle file upload
+     */
     handleFileUpload(file) {
         if (!file.name.endsWith('.csv')) {
-            alert('Please upload a CSV file');
+            alert('⚠️ Please upload a CSV file');
             return;
         }
+
+        console.log(`📁 UIController: Uploading file ${file.name}`);
 
         const reader = new FileReader();
         reader.onload = (e) => {
             try {
-                this.dataManager.importCSV(e.target.result);
-                alert(`Successfully imported ${this.dataManager.data.length} records`);
+                this.assetManager.importCSV(e.target.result);
+                alert(`✅ Successfully imported ${this.assetManager.data.length} asset records!`);
                 this.switchView('dashboard');
             } catch (error) {
-                alert('Error parsing CSV file: ' + error.message);
+                console.error('❌ Error importing CSV:', error);
+                alert('❌ Error parsing CSV file: ' + error.message);
             }
         };
         reader.readAsText(file);
     }
 
+    /**
+     * Export data to CSV
+     */
     exportData() {
-        if (!this.dataManager.hasData()) {
-            alert('No data to export');
+        if (!this.assetManager.hasData()) {
+            alert('⚠️ No data to export');
             return;
         }
 
-        const csv = this.dataManager.exportCSV();
-        const blob = new Blob([csv], { type: 'text/csv' });
+        const csv = this.assetManager.exportCSV();
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `mtn-asset-export-${new Date().toISOString().split('T')[0]}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `mtn-it-assets-${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
         URL.revokeObjectURL(url);
+
+        console.log('💾 UIController: Data exported successfully');
     }
 
-    clearData() {
-        if (confirm('Are you sure you want to clear all data? This cannot be undone.')) {
-            this.dataManager.clearData();
-            this.chartManager.destroyAllCharts();
-            alert('All data cleared');
+    /**
+     * Clear all data
+     */
+    clearAllData() {
+        if (confirm('⚠️ Are you sure you want to clear all data? This action cannot be undone.')) {
+            this.assetManager.clearAllData();
+            this.chartEngine.destroyAllCharts();
+            this.updateUI();
+            alert('✅ All data has been cleared');
         }
     }
 
+    /**
+     * Update entire UI
+     */
     updateUI() {
-        this.updateDashboardStats();
-        this.updateAnalyticsBreakdown();
+        this.renderMetrics();
+        this.renderAllCharts();
+        this.renderTopApplications();
+        this.renderBreakdowns();
+        this.populateFilters();
         this.renderInventoryTable();
-
-        if (this.currentView === 'dashboard' && this.dataManager.hasData()) {
-            setTimeout(() => this.chartManager.updateCharts(), 100);
-        }
+        console.log('🔄 UIController: UI updated');
     }
 
-    updateDashboardStats() {
-        const metrics = this.dataManager.getKeyMetrics();
-        const statusField = this.dataManager.detectStatusField();
+    /**
+     * Render metric cards
+     */
+    renderMetrics() {
+        const metrics = this.assetManager.getMetrics();
 
-        const setTextContent = (id, value) => {
-            const el = document.getElementById(id);
-            if (el) el.textContent = value;
-        };
+        this.setElementText('total-assets', metrics.totalAssets);
+        this.setElementText('physical-count', metrics.physicalCount);
+        this.setElementText('physical-percent', `${metrics.physicalPercent}%`);
+        this.setElementText('vm-count', metrics.vmCount);
+        this.setElementText('vm-percent', `${metrics.vmPercent}%`);
+        this.setElementText('app-count', metrics.appCount);
 
-        setTextContent('total-assets', metrics.totalRecords);
-        setTextContent('total-locations', metrics.uniqueLocations);
-        setTextContent('total-categories', metrics.uniqueCategories);
-
-        // Calculate active percentage if status field exists
-        if (statusField && metrics.totalRecords > 0) {
-            const activeCount = this.dataManager.data.filter(row => {
-                const status = String(row[statusField]).toLowerCase();
-                return status.includes('active') || status.includes('operational');
-            }).length;
-            const percentage = Math.round((activeCount / metrics.totalRecords) * 100);
-            setTextContent('active-percentage', `${percentage}%`);
-        } else {
-            setTextContent('active-percentage', 'N/A');
-        }
+        console.log('📊 UIController: Metrics rendered');
     }
 
-    updateAnalyticsBreakdown() {
-        const analyticsGrid = document.getElementById('analytics-grid');
-        if (!analyticsGrid) return;
-
-        if (!this.dataManager.hasData()) {
-            analyticsGrid.innerHTML = '<p class="no-data">No data available. Upload a CSV file to get started.</p>';
+    /**
+     * Render all charts
+     */
+    renderAllCharts() {
+        if (!this.assetManager.hasData()) {
+            console.log('⚠️ UIController: No data for charts');
             return;
         }
 
-        const locationField = this.dataManager.detectLocationField();
-        const categoryField = this.dataManager.detectCategoryField();
-
-        let html = '';
-
-        if (locationField) {
-            const topLocations = this.dataManager.getTopValues(locationField, 5);
-            html += this.createAnalyticsCard('Top Locations', topLocations);
+        // OS Distribution Chart
+        const osData = this.assetManager.getOSDistribution();
+        if (Object.keys(osData).length > 0) {
+            this.chartEngine.createDoughnutChart('osChart', 'Operating Systems', osData);
         }
 
-        if (categoryField) {
-            const topCategories = this.dataManager.getTopValues(categoryField, 5);
-            html += this.createAnalyticsCard('Top Categories', topCategories);
+        // Deployment Types Chart
+        const deploymentData = this.assetManager.getDeploymentStats();
+        if (Object.keys(deploymentData).length > 0) {
+            this.chartEngine.createDoughnutChart('deploymentChart', 'Deployment Types', deploymentData);
         }
 
-        // Additional analytics for other fields
-        this.dataManager.headers.slice(0, 4).forEach(field => {
-            if (field !== locationField && field !== categoryField) {
-                const topValues = this.dataManager.getTopValues(field, 5);
-                if (topValues.length > 1) {
-                    html += this.createAnalyticsCard(`Top ${field}`, topValues);
-                }
-            }
+        // Environment Status Chart
+        const envData = this.assetManager.getEnvironmentStats();
+        if (Object.keys(envData).length > 0) {
+            this.chartEngine.createDoughnutChart('statusChart', 'Environment Status', envData);
+        }
+
+        // Managed By Chart
+        const managedData = this.assetManager.getManagedByStats();
+        if (Object.keys(managedData).length > 0) {
+            this.chartEngine.createBarChart('managedChart', 'Managed By', managedData);
+        }
+
+        console.log('📈 UIController: All charts rendered');
+    }
+
+    /**
+     * Render top 10 applications
+     */
+    renderTopApplications() {
+        const container = document.getElementById('top-apps');
+        if (!container) return;
+
+        if (!this.assetManager.hasData()) {
+            container.innerHTML = '<p class="no-data">No application data available</p>';
+            return;
+        }
+
+        const appStats = this.assetManager.getApplicationStats();
+        const topApps = appStats.topApps;
+
+        if (topApps.length === 0) {
+            container.innerHTML = '<p class="no-data">No applications found</p>';
+            return;
+        }
+
+        const maxCount = Math.max(...topApps.map(([, count]) => count));
+
+        container.innerHTML = topApps.map(([name, count]) => {
+            const percentage = (count / maxCount) * 100;
+            return `
+                <div class="app-item">
+                    <div class="app-item-header">
+                        <span class="app-name">${name}</span>
+                        <span class="app-count">${count}</span>
+                    </div>
+                    <div class="app-bar">
+                        <div class="app-bar-fill" style="width: ${percentage}%"></div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        console.log('🎯 UIController: Top applications rendered');
+    }
+
+    /**
+     * Render breakdown sections
+     */
+    renderBreakdowns() {
+        if (!this.assetManager.hasData()) {
+            this.renderEmptyBreakdown('os-breakdown');
+            this.renderEmptyBreakdown('classification-breakdown');
+            this.renderEmptyBreakdown('environment-breakdown');
+            return;
+        }
+
+        // OS Breakdown
+        const osData = this.assetManager.getOSDistribution();
+        this.renderBreakdownSection('os-breakdown', osData);
+
+        // Classification Breakdown
+        const classData = this.assetManager.getClassificationStats();
+        this.renderBreakdownSection('classification-breakdown', classData);
+
+        // Environment Breakdown
+        const envData = this.assetManager.getEnvironmentStats();
+        this.renderBreakdownSection('environment-breakdown', envData);
+
+        console.log('📋 UIController: Breakdowns rendered');
+    }
+
+    /**
+     * Render individual breakdown section
+     */
+    renderBreakdownSection(elementId, data) {
+        const container = document.getElementById(elementId);
+        if (!container) return;
+
+        const entries = Object.entries(data).slice(0, 5);
+        const total = Object.values(data).reduce((a, b) => a + b, 0);
+
+        if (entries.length === 0) {
+            container.innerHTML = '<p class="no-data" style="font-size: 0.9rem;">No data</p>';
+            return;
+        }
+
+        container.innerHTML = entries.map(([label, value]) => {
+            const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+            return `
+                <div class="breakdown-item">
+                    <span class="breakdown-label">${label}</span>
+                    <span class="breakdown-value">${value}</span>
+                </div>
+            `;
+        }).join('');
+    }
+
+    /**
+     * Render empty breakdown
+     */
+    renderEmptyBreakdown(elementId) {
+        const container = document.getElementById(elementId);
+        if (container) {
+            container.innerHTML = '<p class="no-data" style="font-size: 0.9rem;">No data available</p>';
+        }
+    }
+
+    /**
+     * Populate filter dropdowns
+     */
+    populateFilters() {
+        if (!this.assetManager.hasData()) return;
+
+        // OS Filter
+        const osColumn = this.assetManager.detectColumn(['OS', 'Operating System', 'OS Type']);
+        if (osColumn) {
+            const osValues = [...new Set(this.assetManager.data.map(row => row[osColumn]))].filter(v => v);
+            this.populateSelect('os-filter', osValues, 'All OS');
+        }
+
+        // Type Filter
+        const typeColumn = this.assetManager.detectColumn(['Standalone/VM/Virtualised', 'Type', 'Deployment']);
+        if (typeColumn) {
+            const typeValues = [...new Set(this.assetManager.data.map(row => row[typeColumn]))].filter(v => v);
+            this.populateSelect('type-filter', typeValues, 'All Types');
+        }
+
+        // Environment Filter
+        const envColumn = this.assetManager.detectColumn(['Status/Environment', 'Environment', 'Status']);
+        if (envColumn) {
+            const envValues = [...new Set(this.assetManager.data.map(row => row[envColumn]))].filter(v => v);
+            this.populateSelect('env-filter', envValues, 'All Environments');
+        }
+
+        console.log('🔽 UIController: Filters populated');
+    }
+
+    /**
+     * Populate select dropdown
+     */
+    populateSelect(selectId, values, defaultText) {
+        const select = document.getElementById(selectId);
+        if (!select) return;
+
+        const currentValue = select.value;
+        select.innerHTML = `<option value="">${defaultText}</option>`;
+
+        values.sort().forEach(value => {
+            const option = document.createElement('option');
+            option.value = value;
+            option.textContent = value;
+            select.appendChild(option);
         });
 
-        analyticsGrid.innerHTML = html || '<p class="no-data">No analytics available</p>';
+        if (currentValue) {
+            select.value = currentValue;
+        }
     }
 
-    createAnalyticsCard(title, data) {
-        const items = data.map(([name, count]) =>
-            `<div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                <span style="color: #B0B0B0;">${name}</span>
-                <span style="color: #FFCB05; font-weight: 600;">${count}</span>
-            </div>`
-        ).join('');
-
-        return `
-            <div class="analytics-card">
-                <h3>${title}</h3>
-                <div>${items}</div>
-            </div>
-        `;
-    }
-
+    /**
+     * Render inventory table
+     */
     renderInventoryTable() {
-        const tbody = document.getElementById('inventory-tbody');
-        const headerRow = document.getElementById('inventory-header-row');
+        const tableHeaders = document.getElementById('table-headers');
+        const tableBody = document.getElementById('table-body');
+        const inventoryCount = document.getElementById('inventory-count');
 
-        if (!tbody || !headerRow) return;
+        if (!tableHeaders || !tableBody) return;
 
-        if (!this.dataManager.hasData()) {
-            headerRow.innerHTML = '';
-            tbody.innerHTML = '<tr><td colspan="100" class="no-data">No data available. Upload a CSV file to get started.</td></tr>';
-            document.getElementById('data-info').innerHTML = 'Showing <strong>0</strong> of <strong>0</strong> records';
+        if (!this.assetManager.hasData()) {
+            tableHeaders.innerHTML = '';
+            tableBody.innerHTML = '<tr><td colspan="100" class="no-data">No asset data available. Import a CSV file to get started.</td></tr>';
+            if (inventoryCount) inventoryCount.textContent = 'Showing 0 of 0 assets';
             return;
         }
 
-        // Search filter
-        const searchTerm = document.getElementById('search-inventory')?.value.toLowerCase() || '';
+        // Apply filters
+        let filteredData = this.assetManager.data;
 
-        const filteredData = searchTerm
-            ? this.dataManager.data.filter(row =>
+        // Search filter
+        if (this.currentFilters.search) {
+            const searchTerm = this.currentFilters.search.toLowerCase();
+            filteredData = filteredData.filter(row =>
                 Object.values(row).some(val =>
                     String(val).toLowerCase().includes(searchTerm)
                 )
-            )
-            : this.dataManager.data;
+            );
+        }
+
+        // OS filter
+        if (this.currentFilters.os) {
+            const osColumn = this.assetManager.detectColumn(['OS', 'Operating System', 'OS Type']);
+            if (osColumn) {
+                filteredData = filteredData.filter(row => row[osColumn] === this.currentFilters.os);
+            }
+        }
+
+        // Type filter
+        if (this.currentFilters.type) {
+            const typeColumn = this.assetManager.detectColumn(['Standalone/VM/Virtualised', 'Type', 'Deployment']);
+            if (typeColumn) {
+                filteredData = filteredData.filter(row => row[typeColumn] === this.currentFilters.type);
+            }
+        }
+
+        // Environment filter
+        if (this.currentFilters.environment) {
+            const envColumn = this.assetManager.detectColumn(['Status/Environment', 'Environment', 'Status']);
+            if (envColumn) {
+                filteredData = filteredData.filter(row => row[envColumn] === this.currentFilters.environment);
+            }
+        }
 
         // Render headers
-        headerRow.innerHTML = this.dataManager.headers.map(h => `<th>${h}</th>`).join('');
+        tableHeaders.innerHTML = this.assetManager.headers.map(h => `<th>${h}</th>`).join('');
 
-        // Render data
+        // Render rows
         if (filteredData.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="${this.dataManager.headers.length}" class="no-data">No matching records found</td></tr>`;
-            document.getElementById('data-info').innerHTML = `Showing <strong>0</strong> of <strong>${this.dataManager.data.length}</strong> records`;
-            return;
-        }
-
-        tbody.innerHTML = filteredData.map(row => {
-            const cells = this.dataManager.headers.map(header => {
-                const value = row[header] || '';
-                return `<td>${this.formatCellValue(value)}</td>`;
+            tableBody.innerHTML = `<tr><td colspan="${this.assetManager.headers.length}" class="no-data">No matching assets found</td></tr>`;
+        } else {
+            tableBody.innerHTML = filteredData.map(row => {
+                const cells = this.assetManager.headers.map(header => {
+                    const value = row[header] || '';
+                    return `<td>${this.formatCellValue(value)}</td>`;
+                }).join('');
+                return `<tr>${cells}</tr>`;
             }).join('');
-            return `<tr>${cells}</tr>`;
-        }).join('');
-
-        // Update record count
-        const dataInfo = document.getElementById('data-info');
-        if (dataInfo) {
-            dataInfo.innerHTML = `Showing <strong>${filteredData.length}</strong> of <strong>${this.dataManager.data.length}</strong> records`;
         }
+
+        // Update count
+        if (inventoryCount) {
+            inventoryCount.textContent = `Showing ${filteredData.length} of ${this.assetManager.data.length} assets`;
+        }
+
+        console.log(`📋 UIController: Inventory table rendered (${filteredData.length} rows)`);
     }
 
+    /**
+     * Format cell value with badges for status
+     */
     formatCellValue(value) {
-        if (!value) return '<span style="color: #666;">-</span>';
+        if (!value || value === '') return '<span style="color: #808080;">-</span>';
 
-        // Check if it's a status-like value
-        const statusKeywords = ['active', 'inactive', 'pending', 'maintenance', 'operational', 'offline'];
         const lowerValue = String(value).toLowerCase();
 
-        if (statusKeywords.includes(lowerValue)) {
-            const statusClass = lowerValue === 'active' || lowerValue === 'operational' ? 'status-active'
-                              : lowerValue === 'inactive' || lowerValue === 'offline' ? 'status-inactive'
-                              : 'status-maintenance';
-            return `<span class="status-badge ${statusClass}">${value}</span>`;
+        // Status badges
+        if (lowerValue === 'active' || lowerValue === 'production' || lowerValue === 'operational') {
+            return `<span class="status-badge status-active">${value}</span>`;
+        }
+        if (lowerValue === 'inactive' || lowerValue === 'offline' || lowerValue === 'decommissioned') {
+            return `<span class="status-badge status-inactive">${value}</span>`;
+        }
+        if (lowerValue === 'maintenance' || lowerValue === 'development' || lowerValue === 'staging') {
+            return `<span class="status-badge status-maintenance">${value}</span>`;
         }
 
         return value;
     }
+
+    /**
+     * Set element text safely
+     */
+    setElementText(id, text) {
+        const element = document.getElementById(id);
+        if (element) {
+            element.textContent = text;
+        }
+    }
 }
 
-// ==================== MAIN APPLICATION ====================
-class MTNAssetDashboard {
+// ==================== APPLICATION INITIALIZATION ====================
+class MTNITAssetDashboard {
     constructor() {
-        this.dataManager = new DataManager();
-        this.chartManager = new ChartManager(this.dataManager);
-        this.uiManager = new UIManager(this.dataManager, this.chartManager);
+        this.assetManager = new ITAssetManager();
+        this.chartEngine = new ChartEngine();
+        this.uiController = new UIController(this.assetManager, this.chartEngine);
+        console.log('🚀 MTN IT Asset Dashboard: Application instance created');
     }
 
     init() {
-        this.uiManager.init();
-        console.log('MTN Asset Management Dashboard initialized');
+        this.uiController.init();
+        console.log('%c ✅ Application Ready! ', 'background: #4CAF50; color: #FFFFFF; font-size: 14px; font-weight: bold; padding: 8px;');
     }
 }
 
-// Initialize application
-let app;
+// Initialize application when DOM is ready
+let dashboardApp;
 document.addEventListener('DOMContentLoaded', () => {
-    app = new MTNAssetDashboard();
-    app.init();
+    dashboardApp = new MTNITAssetDashboard();
+    dashboardApp.init();
 });
+
+// Export for debugging
+window.MTNDashboard = {
+    app: () => dashboardApp,
+    version: '2.0',
+    author: 'MTN IT Department'
+};
+
+console.log('%c Dashboard v2.0 Loaded ', 'background: #2196F3; color: #FFFFFF; font-size: 12px; padding: 5px;');
