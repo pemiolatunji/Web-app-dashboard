@@ -160,6 +160,16 @@
 
             <div class="inventory-stats">
                 <span id="data-info">Showing <strong id="filtered-count">0</strong> of <strong id="total-count">0</strong> assets</span>
+                <div class="page-size-control">
+                    <label for="page-size-select">Show:</label>
+                    <select id="page-size-select" class="filter-select">
+                        <option value="25">25</option>
+                        <option value="50" selected>50</option>
+                        <option value="100">100</option>
+                        <option value="500">500</option>
+                    </select>
+                    <span>per page</span>
+                </div>
             </div>
 
             <div class="inventory-table-container">
@@ -170,6 +180,8 @@
                     <tbody id="inventory-tbody"></tbody>
                 </table>
             </div>
+
+            <div id="pagination-controls"></div>
         </section>
 
         <!-- Import Data View -->

@@ -1,5 +1,98 @@
 // MTN Asset Management Dashboard Application
 
+// ==================== UTILITY FUNCTIONS ====================
+class Utils {
+    // Debounce function to limit rate of function calls
+    static debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+
+    // Toast notification system
+    static showToast(message, type = 'info', duration = 3000) {
+        const toastContainer = document.getElementById('toast-container') || this.createToastContainer();
+
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+
+        const icon = this.getToastIcon(type);
+        toast.innerHTML = `
+            <i class="fas ${icon}"></i>
+            <span>${message}</span>
+        `;
+
+        toastContainer.appendChild(toast);
+
+        // Trigger animation
+        setTimeout(() => toast.classList.add('show'), 10);
+
+        // Remove toast after duration
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 300);
+        }, duration);
+    }
+
+    static createToastContainer() {
+        const container = document.createElement('div');
+        container.id = 'toast-container';
+        document.body.appendChild(container);
+        return container;
+    }
+
+    static getToastIcon(type) {
+        const icons = {
+            'success': 'fa-check-circle',
+            'error': 'fa-exclamation-circle',
+            'warning': 'fa-exclamation-triangle',
+            'info': 'fa-info-circle'
+        };
+        return icons[type] || icons.info;
+    }
+
+    // Loading spinner
+    static showLoading(message = 'Loading...') {
+        let loader = document.getElementById('global-loader');
+        if (!loader) {
+            loader = document.createElement('div');
+            loader.id = 'global-loader';
+            loader.innerHTML = `
+                <div class="loader-backdrop">
+                    <div class="loader-content">
+                        <div class="spinner"></div>
+                        <p class="loader-message">${message}</p>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(loader);
+        } else {
+            loader.querySelector('.loader-message').textContent = message;
+        }
+        loader.style.display = 'flex';
+    }
+
+    static hideLoading() {
+        const loader = document.getElementById('global-loader');
+        if (loader) {
+            loader.style.display = 'none';
+        }
+    }
+
+    static updateLoadingMessage(message) {
+        const loader = document.getElementById('global-loader');
+        if (loader) {
+            loader.querySelector('.loader-message').textContent = message;
+        }
+    }
+}
+
 // ==================== CSV PARSER ====================
 class CSVParser {
     static parseCSV(csvText) {
@@ -78,6 +171,10 @@ class DataManager {
         this.headers = [];
         this.data = [];
         this.charts = {};
+        this.currentPage = 1;
+        this.pageSize = 50;
+        this.sortColumn = null;
+        this.sortDirection = 'asc';
         this.loadData();
     }
 
@@ -184,6 +281,54 @@ class DataManager {
             uniqueCategories: categoryField ? Object.keys(this.groupBy(categoryField)).length : 0,
             fields: this.headers.length
         };
+    }
+
+    // ==================== SORTING & PAGINATION ====================
+    sortData(data, column, direction) {
+        if (!column) return data;
+
+        return [...data].sort((a, b) => {
+            let valA = a[column] || '';
+            let valB = b[column] || '';
+
+            // Try numeric comparison first
+            const numA = parseFloat(valA);
+            const numB = parseFloat(valB);
+
+            if (!isNaN(numA) && !isNaN(numB)) {
+                return direction === 'asc' ? numA - numB : numB - numA;
+            }
+
+            // String comparison
+            valA = String(valA).toLowerCase();
+            valB = String(valB).toLowerCase();
+
+            if (direction === 'asc') {
+                return valA.localeCompare(valB);
+            } else {
+                return valB.localeCompare(valA);
+            }
+        });
+    }
+
+    setSorting(column, direction) {
+        this.sortColumn = column;
+        this.sortDirection = direction;
+    }
+
+    setPagination(page, pageSize) {
+        this.currentPage = page;
+        this.pageSize = pageSize;
+    }
+
+    getPaginatedData(data) {
+        const start = (this.currentPage - 1) * this.pageSize;
+        const end = start + this.pageSize;
+        return data.slice(start, end);
+    }
+
+    getTotalPages(totalRecords) {
+        return Math.ceil(totalRecords / this.pageSize);
     }
 }
 
@@ -427,10 +572,23 @@ class UIManager {
             this.updateUI();
         });
 
-        // Inventory search
+        // Inventory search with debouncing
         const searchInput = document.getElementById('search-inventory');
         if (searchInput) {
-            searchInput.addEventListener('input', () => this.renderInventoryTable());
+            const debouncedSearch = Utils.debounce(() => {
+                this.dataManager.currentPage = 1; // Reset to first page on search
+                this.renderInventoryTable();
+            }, 300);
+            searchInput.addEventListener('input', debouncedSearch);
+        }
+
+        // Page size selector
+        const pageSizeSelect = document.getElementById('page-size-select');
+        if (pageSizeSelect) {
+            pageSizeSelect.addEventListener('change', (e) => {
+                this.dataManager.setPagination(1, parseInt(e.target.value));
+                this.renderInventoryTable();
+            });
         }
     }
 
@@ -459,46 +617,66 @@ class UIManager {
 
     handleFileUpload(file) {
         if (!file.name.endsWith('.csv')) {
-            alert('Please upload a CSV file');
+            Utils.showToast('Please upload a CSV file', 'error');
             return;
         }
+
+        Utils.showLoading('Reading CSV file...');
 
         const reader = new FileReader();
         reader.onload = (e) => {
             try {
+                Utils.updateLoadingMessage('Parsing CSV data...');
                 this.dataManager.importCSV(e.target.result);
-                alert(`Successfully imported ${this.dataManager.data.length} records`);
+                Utils.hideLoading();
+                Utils.showToast(`Successfully imported ${this.dataManager.data.length} records`, 'success', 4000);
                 this.switchView('dashboard');
             } catch (error) {
-                alert('Error parsing CSV file: ' + error.message);
+                Utils.hideLoading();
+                Utils.showToast('Error parsing CSV file: ' + error.message, 'error', 5000);
             }
+        };
+        reader.onerror = () => {
+            Utils.hideLoading();
+            Utils.showToast('Error reading file', 'error');
         };
         reader.readAsText(file);
     }
 
     exportData() {
         if (!this.dataManager.hasData()) {
-            alert('No data to export');
+            Utils.showToast('No data to export', 'warning');
             return;
         }
 
-        const csv = this.dataManager.exportCSV();
-        const blob = new Blob([csv], { type: 'text/csv' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `mtn-asset-export-${new Date().toISOString().split('T')[0]}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        Utils.showLoading('Generating CSV export...');
+
+        try {
+            const csv = this.dataManager.exportCSV();
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `asset-export-${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            Utils.hideLoading();
+            Utils.showToast('Data exported successfully', 'success');
+        } catch (error) {
+            Utils.hideLoading();
+            Utils.showToast('Error exporting data: ' + error.message, 'error');
+        }
     }
 
     clearData() {
         if (confirm('Are you sure you want to clear all data? This cannot be undone.')) {
+            Utils.showLoading('Clearing data...');
             this.dataManager.clearData();
             this.chartManager.destroyAllCharts();
-            alert('All data cleared');
+            Utils.hideLoading();
+            Utils.showToast('All data cleared successfully', 'success');
         }
     }
 
@@ -600,44 +778,141 @@ class UIManager {
         if (!this.dataManager.hasData()) {
             headerRow.innerHTML = '';
             tbody.innerHTML = '<tr><td colspan="100" class="no-data">No data available. Upload a CSV file to get started.</td></tr>';
-            document.getElementById('data-info').innerHTML = 'Showing <strong>0</strong> of <strong>0</strong> records';
+            const dataInfo = document.getElementById('data-info');
+            if (dataInfo) dataInfo.innerHTML = 'Showing <strong>0</strong> of <strong>0</strong> records';
+            this.renderPaginationControls(0, 0);
             return;
         }
 
         // Search filter
         const searchTerm = document.getElementById('search-inventory')?.value.toLowerCase() || '';
 
-        const filteredData = searchTerm
+        let filteredData = searchTerm
             ? this.dataManager.data.filter(row =>
                 Object.values(row).some(val =>
                     String(val).toLowerCase().includes(searchTerm)
                 )
             )
-            : this.dataManager.data;
+            : [...this.dataManager.data];
 
-        // Render headers
-        headerRow.innerHTML = this.dataManager.headers.map(h => `<th>${h}</th>`).join('');
-
-        // Render data
-        if (filteredData.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="${this.dataManager.headers.length}" class="no-data">No matching records found</td></tr>`;
-            document.getElementById('data-info').innerHTML = `Showing <strong>0</strong> of <strong>${this.dataManager.data.length}</strong> records`;
-            return;
+        // Apply sorting
+        if (this.dataManager.sortColumn) {
+            filteredData = this.dataManager.sortData(
+                filteredData,
+                this.dataManager.sortColumn,
+                this.dataManager.sortDirection
+            );
         }
 
-        tbody.innerHTML = filteredData.map(row => {
-            const cells = this.dataManager.headers.map(header => {
-                const value = row[header] || '';
-                return `<td>${this.formatCellValue(value)}</td>`;
-            }).join('');
-            return `<tr>${cells}</tr>`;
+        const totalFiltered = filteredData.length;
+
+        // Apply pagination
+        const paginatedData = this.dataManager.getPaginatedData(filteredData);
+        const totalPages = this.dataManager.getTotalPages(totalFiltered);
+
+        // Render sortable headers
+        headerRow.innerHTML = this.dataManager.headers.map(header => {
+            const isSorted = this.dataManager.sortColumn === header;
+            const sortIcon = isSorted
+                ? (this.dataManager.sortDirection === 'asc' ? '↑' : '↓')
+                : '↕';
+            return `<th class="sortable" data-column="${header}">
+                ${header} <span class="sort-indicator">${sortIcon}</span>
+            </th>`;
         }).join('');
+
+        // Add click handlers to headers
+        headerRow.querySelectorAll('.sortable').forEach(th => {
+            th.addEventListener('click', () => {
+                const column = th.dataset.column;
+                const newDirection = this.dataManager.sortColumn === column && this.dataManager.sortDirection === 'asc' ? 'desc' : 'asc';
+                this.dataManager.setSorting(column, newDirection);
+                this.renderInventoryTable();
+            });
+        });
+
+        // Render data
+        if (paginatedData.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="${this.dataManager.headers.length}" class="no-data">No matching records found</td></tr>`;
+        } else {
+            tbody.innerHTML = paginatedData.map(row => {
+                const cells = this.dataManager.headers.map(header => {
+                    const value = row[header] || '';
+                    return `<td>${this.formatCellValue(value)}</td>`;
+                }).join('');
+                return `<tr>${cells}</tr>`;
+            }).join('');
+        }
 
         // Update record count
         const dataInfo = document.getElementById('data-info');
         if (dataInfo) {
-            dataInfo.innerHTML = `Showing <strong>${filteredData.length}</strong> of <strong>${this.dataManager.data.length}</strong> records`;
+            const start = totalFiltered > 0 ? (this.dataManager.currentPage - 1) * this.dataManager.pageSize + 1 : 0;
+            const end = Math.min(this.dataManager.currentPage * this.dataManager.pageSize, totalFiltered);
+            dataInfo.innerHTML = `Showing <strong>${start}-${end}</strong> of <strong>${totalFiltered}</strong> records${searchTerm ? ` (filtered from ${this.dataManager.data.length} total)` : ''}`;
         }
+
+        // Render pagination controls
+        this.renderPaginationControls(totalPages, totalFiltered);
+    }
+
+    renderPaginationControls(totalPages, totalRecords) {
+        const paginationContainer = document.getElementById('pagination-controls');
+        if (!paginationContainer) return;
+
+        if (totalPages <= 1) {
+            paginationContainer.innerHTML = '';
+            return;
+        }
+
+        const currentPage = this.dataManager.currentPage;
+        let html = '<div class="pagination">';
+
+        // Previous button
+        html += `<button class="pagination-btn" ${currentPage === 1 ? 'disabled' : ''} data-page="${currentPage - 1}">
+            <i class="fas fa-chevron-left"></i> Previous
+        </button>`;
+
+        // Page numbers
+        const maxButtons = 7;
+        let startPage = Math.max(1, currentPage - Math.floor(maxButtons / 2));
+        let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+
+        if (endPage - startPage < maxButtons - 1) {
+            startPage = Math.max(1, endPage - maxButtons + 1);
+        }
+
+        if (startPage > 1) {
+            html += `<button class="pagination-btn" data-page="1">1</button>`;
+            if (startPage > 2) html += '<span class="pagination-ellipsis">...</span>';
+        }
+
+        for (let i = startPage; i <= endPage; i++) {
+            html += `<button class="pagination-btn ${i === currentPage ? 'active' : ''}" data-page="${i}">${i}</button>`;
+        }
+
+        if (endPage < totalPages) {
+            if (endPage < totalPages - 1) html += '<span class="pagination-ellipsis">...</span>';
+            html += `<button class="pagination-btn" data-page="${totalPages}">${totalPages}</button>`;
+        }
+
+        // Next button
+        html += `<button class="pagination-btn" ${currentPage === totalPages ? 'disabled' : ''} data-page="${currentPage + 1}">
+            Next <i class="fas fa-chevron-right"></i>
+        </button>`;
+
+        html += '</div>';
+        paginationContainer.innerHTML = html;
+
+        // Add click handlers
+        paginationContainer.querySelectorAll('.pagination-btn:not([disabled])').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const page = parseInt(btn.dataset.page);
+                this.dataManager.setPagination(page, this.dataManager.pageSize);
+                this.renderInventoryTable();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+        });
     }
 
     formatCellValue(value) {
