@@ -283,6 +283,112 @@ class DataManager {
         };
     }
 
+    // ==================== CSV DATA ANALYTICS ====================
+    getDataQualityMetrics() {
+        if (!this.hasData()) return null;
+
+        const totalCells = this.data.length * this.headers.length;
+        let emptyCells = 0;
+        let filledCells = 0;
+
+        this.data.forEach(row => {
+            this.headers.forEach(header => {
+                const value = row[header];
+                if (!value || String(value).trim() === '') {
+                    emptyCells++;
+                } else {
+                    filledCells++;
+                }
+            });
+        });
+
+        const completeness = ((filledCells / totalCells) * 100).toFixed(1);
+
+        return {
+            totalCells,
+            filledCells,
+            emptyCells,
+            completeness: parseFloat(completeness)
+        };
+    }
+
+    getFieldCompleteness() {
+        if (!this.hasData()) return [];
+
+        return this.headers.map(header => {
+            let filled = 0;
+            this.data.forEach(row => {
+                const value = row[header];
+                if (value && String(value).trim() !== '') {
+                    filled++;
+                }
+            });
+            const percentage = ((filled / this.data.length) * 100).toFixed(1);
+            return {
+                field: header,
+                filled,
+                total: this.data.length,
+                percentage: parseFloat(percentage)
+            };
+        }).sort((a, b) => a.percentage - b.percentage);
+    }
+
+    getDuplicateAnalysis() {
+        if (!this.hasData() || this.headers.length === 0) return null;
+
+        // Check for duplicate rows (based on all fields)
+        const rowHashes = new Map();
+        let duplicates = 0;
+
+        this.data.forEach((row, index) => {
+            const hash = JSON.stringify(row);
+            if (rowHashes.has(hash)) {
+                duplicates++;
+            } else {
+                rowHashes.set(hash, index);
+            }
+        });
+
+        return {
+            totalRows: this.data.length,
+            uniqueRows: rowHashes.size,
+            duplicateRows: duplicates,
+            duplicatePercentage: ((duplicates / this.data.length) * 100).toFixed(1)
+        };
+    }
+
+    getFieldStatistics() {
+        if (!this.hasData()) return [];
+
+        return this.headers.map(header => {
+            const values = this.data.map(row => row[header]);
+            const uniqueValues = new Set(values.filter(v => v && String(v).trim() !== '')).size;
+            const emptyCount = values.filter(v => !v || String(v).trim() === '').length;
+
+            // Check if numeric
+            const numericValues = values
+                .filter(v => v && !isNaN(v))
+                .map(v => parseFloat(v));
+
+            const isNumeric = numericValues.length > this.data.length * 0.5;
+
+            let stats = {
+                field: header,
+                uniqueValues,
+                emptyCount,
+                isNumeric
+            };
+
+            if (isNumeric && numericValues.length > 0) {
+                stats.min = Math.min(...numericValues);
+                stats.max = Math.max(...numericValues);
+                stats.avg = (numericValues.reduce((a, b) => a + b, 0) / numericValues.length).toFixed(2);
+            }
+
+            return stats;
+        });
+    }
+
     // ==================== SORTING & PAGINATION ====================
     sortData(data, column, direction) {
         if (!column) return data;
@@ -725,30 +831,44 @@ class UIManager {
             return;
         }
 
-        const locationField = this.dataManager.detectLocationField();
-        const categoryField = this.dataManager.detectCategoryField();
-
         let html = '';
 
-        if (locationField) {
-            const topLocations = this.dataManager.getTopValues(locationField, 5);
-            html += this.createAnalyticsCard('Top Locations', topLocations);
+        // Data Quality Metrics
+        const qualityMetrics = this.dataManager.getDataQualityMetrics();
+        if (qualityMetrics) {
+            html += this.createDataQualityCard(qualityMetrics);
         }
 
+        // Duplicate Analysis
+        const duplicateAnalysis = this.dataManager.getDuplicateAnalysis();
+        if (duplicateAnalysis) {
+            html += this.createDuplicateAnalysisCard(duplicateAnalysis);
+        }
+
+        // Field Completeness - show top 5 least complete fields
+        const fieldCompleteness = this.dataManager.getFieldCompleteness();
+        if (fieldCompleteness.length > 0) {
+            const leastComplete = fieldCompleteness.slice(0, 5);
+            html += this.createFieldCompletenessCard(leastComplete);
+        }
+
+        // Field Statistics - show interesting fields
+        const fieldStats = this.dataManager.getFieldStatistics();
+        if (fieldStats.length > 0) {
+            const topStats = fieldStats
+                .filter(stat => stat.uniqueValues > 1)
+                .slice(0, 3);
+            topStats.forEach(stat => {
+                html += this.createFieldStatisticsCard(stat);
+            });
+        }
+
+        // Category distribution if available
+        const categoryField = this.dataManager.detectCategoryField();
         if (categoryField) {
             const topCategories = this.dataManager.getTopValues(categoryField, 5);
             html += this.createAnalyticsCard('Top Categories', topCategories);
         }
-
-        // Additional analytics for other fields
-        this.dataManager.headers.slice(0, 4).forEach(field => {
-            if (field !== locationField && field !== categoryField) {
-                const topValues = this.dataManager.getTopValues(field, 5);
-                if (topValues.length > 1) {
-                    html += this.createAnalyticsCard(`Top ${field}`, topValues);
-                }
-            }
-        });
 
         analyticsGrid.innerHTML = html || '<p class="no-data">No analytics available</p>';
     }
@@ -765,6 +885,128 @@ class UIManager {
             <div class="analytics-card">
                 <h3>${title}</h3>
                 <div>${items}</div>
+            </div>
+        `;
+    }
+
+    createDataQualityCard(metrics) {
+        const qualityColor = metrics.completeness >= 90 ? '#4CAF50' :
+                            metrics.completeness >= 70 ? '#FF9800' : '#E91E63';
+
+        return `
+            <div class="analytics-card">
+                <h3><i class="fas fa-clipboard-check"></i> Data Quality</h3>
+                <div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.75rem;">
+                        <span style="color: #B0B0B0;">Completeness</span>
+                        <span style="color: ${qualityColor}; font-weight: 700; font-size: 1.2rem;">${metrics.completeness}%</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                        <span style="color: #B0B0B0;">Filled Cells</span>
+                        <span style="color: #4CAF50;">${metrics.filledCells.toLocaleString()}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                        <span style="color: #B0B0B0;">Empty Cells</span>
+                        <span style="color: #E91E63;">${metrics.emptyCells.toLocaleString()}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span style="color: #B0B0B0;">Total Cells</span>
+                        <span style="color: #FFCB05;">${metrics.totalCells.toLocaleString()}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    createDuplicateAnalysisCard(analysis) {
+        const hasDuplicates = analysis.duplicateRows > 0;
+        const statusColor = hasDuplicates ? '#E91E63' : '#4CAF50';
+
+        return `
+            <div class="analytics-card">
+                <h3><i class="fas fa-clone"></i> Duplicate Detection</h3>
+                <div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.75rem;">
+                        <span style="color: #B0B0B0;">Duplicate Rows</span>
+                        <span style="color: ${statusColor}; font-weight: 700; font-size: 1.2rem;">${analysis.duplicateRows}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                        <span style="color: #B0B0B0;">Unique Rows</span>
+                        <span style="color: #4CAF50;">${analysis.uniqueRows.toLocaleString()}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                        <span style="color: #B0B0B0;">Total Rows</span>
+                        <span style="color: #FFCB05;">${analysis.totalRows.toLocaleString()}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span style="color: #B0B0B0;">Duplicate %</span>
+                        <span style="color: ${statusColor};">${analysis.duplicatePercentage}%</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    createFieldCompletenessCard(fields) {
+        const items = fields.map(field => {
+            const barColor = field.percentage >= 90 ? '#4CAF50' :
+                           field.percentage >= 70 ? '#FF9800' : '#E91E63';
+            return `
+                <div style="margin-bottom: 1rem;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+                        <span style="color: #B0B0B0; font-size: 0.85rem;">${field.field}</span>
+                        <span style="color: ${barColor}; font-weight: 600;">${field.percentage}%</span>
+                    </div>
+                    <div style="background: #2A2A2A; border-radius: 4px; height: 6px; overflow: hidden;">
+                        <div style="background: ${barColor}; height: 100%; width: ${field.percentage}%;"></div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        return `
+            <div class="analytics-card">
+                <h3><i class="fas fa-chart-pie"></i> Field Completeness</h3>
+                <div>${items}</div>
+            </div>
+        `;
+    }
+
+    createFieldStatisticsCard(stat) {
+        let content = `
+            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                <span style="color: #B0B0B0;">Unique Values</span>
+                <span style="color: #FFCB05; font-weight: 600;">${stat.uniqueValues.toLocaleString()}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                <span style="color: #B0B0B0;">Empty Values</span>
+                <span style="color: #E91E63;">${stat.emptyCount.toLocaleString()}</span>
+            </div>
+        `;
+
+        if (stat.isNumeric && stat.min !== undefined) {
+            content += `
+                <div style="border-top: 1px solid #2A2A2A; margin: 0.75rem 0; padding-top: 0.75rem;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                        <span style="color: #B0B0B0;">Min</span>
+                        <span style="color: #4CAF50;">${stat.min}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                        <span style="color: #B0B0B0;">Max</span>
+                        <span style="color: #4CAF50;">${stat.max}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span style="color: #B0B0B0;">Average</span>
+                        <span style="color: #FFCB05;">${stat.avg}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        return `
+            <div class="analytics-card">
+                <h3><i class="fas fa-database"></i> ${stat.field} ${stat.isNumeric ? '(Numeric)' : ''}</h3>
+                <div>${content}</div>
             </div>
         `;
     }
